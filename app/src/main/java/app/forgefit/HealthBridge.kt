@@ -151,7 +151,7 @@ class HealthBridge(private val act: MainActivity) {
         records += ExerciseSessionRecord(
             startTime = start, startZoneOffset = zone,
             endTime = end, endZoneOffset = zone,
-            metadata = Metadata.manualEntry(clientRecordId = "forge-" + a.optString("id")),
+            metadata = Metadata.manualEntry(clientRecordId = "forge-" + a.optString("id").ifBlank { a.getLong("start").toString() }),
             exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING,
             title = a.optString("name", "Strength training").take(100),
             notes = a.optString("description").take(1000),

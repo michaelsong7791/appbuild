@@ -81,7 +81,7 @@ class TrackingService : Service(), SensorEventListener, MessageClient.OnMessageR
         send(JSONObject().put("type", "hello"))
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_NOT_STICKY
 
     override fun onDestroy() {
         runCatching { sm.unregisterListener(this) }
