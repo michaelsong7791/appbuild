@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a0b0e">
+<title>Forge</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="root"></div>
+<script src="js/icons.js"></script>
+<script src="data/exercises.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/game.js"></script>
+<script src="js/bodymap.js"></script>
+<script src="js/bridge.js"></script>
+<script src="js/app.js"></script>
+<script src="js/views.js"></script>
+<script src="js/screens.js"></script>
+<script src="js/workout.js"></script>
+<script>
+  window.addEventListener('error', function (e) { console.error('Forge error:', e.message, e.filename + ':' + e.lineno); });
+  F.boot();
+</script>
+</body>
+</html>

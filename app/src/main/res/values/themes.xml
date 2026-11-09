@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="forge_bg">#FF0A0B0E</color>
+    <color name="forge_accent">#FFFF6A33</color>
+    <style name="Theme.Forge" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/forge_bg</item>
+        <item name="android:colorBackground">@color/forge_bg</item>
+        <item name="android:colorAccent">@color/forge_accent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
