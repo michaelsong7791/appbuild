@@ -47,6 +47,8 @@
         case 'watch.status': return ok({ connected: true, name: 'Galaxy Watch9 (sim)' });
         case 'watch.send': Mock.simWatch(a); return ok({ ok: true });
         case 'share.backup': { const b = new Blob([a.json], { type: 'application/json' }); const u = URL.createObjectURL(b); const l = document.createElement('a'); l.href = u; l.download = 'forge-backup.json'; l.click(); return ok({ ok: true }); }
+        case 'sync.inbox': return ok({ sessions: [], activities: [], body: [] });
+        case 'sync.schedule': return ok({ ok: true });
         case 'app.keepAwake': return ok({});
         case 'app.vibrate': if (navigator.vibrate) navigator.vibrate(a.ms || 80); return ok({});
         case 'app.openUrl': window.open(a.url, '_blank'); return ok({});

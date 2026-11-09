@@ -38,6 +38,13 @@ class MainActivity : ComponentActivity() {
         PermissionController.createRequestPermissionResultContract()
     ) { granted -> hcPermissionResult?.complete(granted) }
 
+    private val notifPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    fun askNotificationPermission() = runOnUiThread {
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) runCatching { notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS) }
+    }
+
     // <input type=file> support for backup import
     private var fileCallback: ValueCallback<Array<Uri>>? = null
     private val filePicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->

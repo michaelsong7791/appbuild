@@ -83,33 +83,72 @@
   const cardioPayload = c => ({ id: c.id, type: c.type, start: c.start, end: c.end, distM: c.distKm ? Math.round(c.distKm * 1000) : 0, kcal: (c.energy || {}).active || 0, name: 'Forge · ' + N.CARDIO[c.type].label, sportType: N.CARDIO[c.type].strava });
 
   /** Import from Samsung Health (Health Connect) and Strava, de-duplicated by start time. */
+  const hcToCardio = x => ({ id: 'hc:' + x.id, type: x.type, start: x.start, end: x.end, min: Math.round((x.end - x.start) / 60000), distKm: x.distM ? x.distM / 1000 : null, elevM: x.elevM || null, hrAvg: x.hrAvg || null, hrMax: x.hrMax || null, deviceKcal: x.kcal || null, title: x.title, src: 'hc' });
+  const stravaToCardio = x => ({ id: 'strava:' + x.id, sid: x.id, type: x.type, start: x.start, end: x.start + x.elapsed * 1000, min: Math.round(x.moving / 60) || Math.round(x.elapsed / 60), distKm: x.distM ? x.distM / 1000 : null, elevM: x.elevM || null, hrAvg: x.hrAvg || null, watts: x.watts || null, deviceKcal: x.type.startsWith('cycle') ? (x.kcal || null) : null, title: x.name, src: 'strava' });
+
+  /** Merge activities (from live calls or the background-sync inbox) into the cardio log, de-duplicated by start time. */
+  async function ingestCardio(hcList, stravaList) {
+    const st = S(); let added = 0; const newOnes = [];
+    const exists = start => st.cardio.some(c => Math.abs(c.start - start) < 3 * 60e3) || st.sessions.some(s => Math.abs(s.date - start) < 3 * 60e3);
+    const add = c => { if (c.min < 3 || exists(c.start)) return; c.energy = N.cardioEnergy(c, st); st.cardio.push(c); newOnes.push(c); added++; };
+    (hcList || []).forEach(x => add(hcToCardio(x)));
+    for (const x of (stravaList || [])) {
+      const c = stravaToCardio(x);
+      if (exists(c.start)) continue;
+      if (['run', 'walk', 'hike'].includes(c.type) && c.distKm) await attachStreams(c, x.streams);
+      add(c);
+    }
+    if (added) { st.cardio.sort((a, b) => a.start - b.start); const xp = newOnes.reduce((a, c) => a + Math.round(Math.min(120, c.min * 1.5 + c.energy.active / 10)), 0); st.game.xp += xp; }
+    return added;
+  }
+
   F.importCardio = async (quiet) => {
-    const st = S(); let added = 0; const since = Date.now() - 21 * 864e5;
-    const exists = (start, type) => st.cardio.some(c => Math.abs(c.start - start) < 3 * 60e3) || st.sessions.some(s => Math.abs(s.date - start) < 3 * 60e3);
-    const add = c => { if (c.min < 3 || exists(c.start)) return; c.energy = N.cardioEnergy(c, st); st.cardio.push(c); added++; };
-    if (st.settings.hcGranted) {
-      try { const r = await B.call('hc.readSessions', { since }); (r.sessions || []).forEach(x => add({ id: 'hc:' + x.id, type: x.type, start: x.start, end: x.end, min: Math.round((x.end - x.start) / 60000), distKm: x.distM ? x.distM / 1000 : null, elevM: x.elevM || null, hrAvg: x.hrAvg || null, hrMax: x.hrMax || null, deviceKcal: x.kcal || null, title: x.title, src: 'hc' })); } catch (e) { if (!quiet) F.toast('Samsung Health: ' + e.message); }
-    }
-    const sv = F.UI.integrations.strava || {};
-    if (sv.connected) {
-      try {
-        const r = await B.call('strava.activities', { since });
-        for (const x of (r.activities || [])) {
-          const c = { id: 'strava:' + x.id, sid: x.id, type: x.type, start: x.start, end: x.start + x.elapsed * 1000, min: Math.round(x.moving / 60) || Math.round(x.elapsed / 60), distKm: x.distM ? x.distM / 1000 : null, elevM: x.elevM || null, hrAvg: x.hrAvg || null, watts: x.watts || null, deviceKcal: x.type.startsWith('cycle') ? (x.kcal || null) : null, title: x.name, src: 'strava' };
-          if (exists(c.start)) continue;
-          if (['run', 'walk', 'hike'].includes(c.type) && c.distKm) await attachStreams(c);
-          add(c);
-        }
-      } catch (e) { if (!quiet) F.toast('Strava: ' + e.message); }
-    }
-    st.cardio.sort((a, b) => a.start - b.start);
+    const st = S(); const since = Date.now() - 21 * 864e5; let hc = [], sa = [];
+    if (st.settings.hcGranted) { try { hc = (await B.call('hc.readSessions', { since })).sessions || []; } catch (e) { if (!quiet) F.toast('Samsung Health: ' + e.message); } }
+    if ((F.UI.integrations.strava || {}).connected) { try { sa = (await B.call('strava.activities', { since })).activities || []; } catch (e) { if (!quiet) F.toast('Strava: ' + e.message); } }
+    const added = await ingestCardio(hc, sa);
     F.save(); if (!quiet || added) F.toast(added ? 'Imported ' + added + ' activit' + (added > 1 ? 'ies' : 'y') : 'No new activities found');
     F.render(); return added;
   };
-  /** Altitude/distance (+HR) streams → grade-by-grade energy and HR-based calories. Downsampled to keep storage small. */
-  async function attachStreams(c) {
+
+  /** Pull everything the background sync collected while Forge was closed. */
+  F.mergeInbox = async () => {
+    let box; try { box = await B.call('sync.inbox', {}); } catch (e) { return 0; }
+    if (!box) return 0;
+    const n = await ingestCardio(box.sessions, box.activities);
+    const nb = (box.body && box.body.length) ? ingestBody({ entries: box.body, heightM: box.heightM }) : 0;
+    if (n || nb) { F.save(); F.toast('Synced in background: ' + [n ? n + ' activit' + (n > 1 ? 'ies' : 'y') : '', nb ? nb + ' body reading' + (nb > 1 ? 's' : '') : ''].filter(Boolean).join(' · ')); F.render(); }
+    return n + nb;
+  };
+
+  /** One sync pass: health metrics + activities + body. Throttled unless forced. */
+  let syncing = false;
+  F.syncAll = async (force) => {
+    const st = S(); if (!st.profile || syncing) return;
+    if (!force && Date.now() - (F.UI.lastSync || 0) < 3 * 60e3) return;
+    syncing = true; F.UI.syncing = true;
     try {
-      const s = await B.call('strava.streams', { id: c.sid });
+      await F.mergeInbox();
+      if (st.settings.hcGranted) await F.refreshHealth(true);
+      await F.importCardio(!force);
+      await F.importBody(!force);
+      F.UI.lastSync = Date.now(); st.settings.lastSync = Date.now(); F.save();
+    } finally { syncing = false; F.UI.syncing = false; F.render(); }
+  };
+  A.syncAll = () => { F.toast('Syncing Samsung Health & Strava…'); F.syncAll(true); };
+  setInterval(() => { if (document.visibilityState !== 'hidden') F.syncAll(false); }, 5 * 60e3);
+
+  /** Background sync (Android WorkManager) — runs even when Forge is closed. */
+  F.scheduleSync = async () => {
+    const st = S();
+    try { await B.call('sync.schedule', { on: st.settings.bgSync !== false, minutes: st.settings.bgMinutes || 15, notify: st.settings.bgNotify !== false }); } catch (e) { }
+  };
+  A.bgMin = d => { const st = S(); st.settings.bgMinutes = +d.m; F.save(); F.scheduleSync(); F.render(); };
+
+  /** Altitude/distance (+HR) streams → grade-by-grade energy and HR-based calories. Downsampled to keep storage small. */
+  async function attachStreams(c, pre) {
+    try {
+      const s = pre || await B.call('strava.streams', { id: c.sid });
       if (s.distance && s.altitude && s.distance.length > 10) {
         const step = Math.max(1, Math.floor(s.distance.length / 600)); const d = [], a = [];
         for (let i = 0; i < s.distance.length; i += step) { d.push(Math.round(s.distance[i])); a.push(Math.round(s.altitude[i] * 10) / 10); }
@@ -189,18 +228,23 @@
     F.UI.sheet = null; F.save(true); F.toast('Measurements saved'); F.render();
     if (st.settings.hcGranted && (e.weight || e.bf || d.height)) { try { await B.call('hc.writeBody', { weightKg: e.weight ? E.toKg(e.weight, st.profile.units) : null, bf: e.bf || null, heightM: st.profile.height ? st.profile.height / 100 : null }); } catch (err) { } }
   };
+  function ingestBody(r) {
+    const st = S(); let n = 0;
+    const toU = kg => st.profile.units === 'lb' ? Math.round(kg * 2.20462 * 10) / 10 : Math.round(kg * 10) / 10;
+    (r.entries || []).forEach(x => {
+      if (st.body.some(b => Math.abs(b.t - x.t) < 10 * 60e3 && b.src === 'hc')) return;
+      const e = { t: x.t, src: 'hc' }; if (x.weightKg) e.weight = toU(x.weightKg); if (x.bf != null) e.bf = Math.round(x.bf * 10) / 10; if (x.lbmKg) e.lbm = toU(x.lbmKg); if (x.bmr) e.bmr = Math.round(x.bmr);
+      if (Object.keys(e).length > 2) { st.body.push(e); n++; }
+    });
+    if (r.heightM && !st.profile.height) st.profile.height = Math.round(r.heightM * 1000) / 10;
+    const lw = st.body.filter(b => b.weight).sort((a, b) => b.t - a.t)[0]; if (lw) st.profile.bodyweight = lw.weight;
+    return n;
+  }
   F.importBody = async (quiet) => {
     const st = S(); if (!st.settings.hcGranted) return 0;
     try {
-      const r = await B.call('hc.readBody', { since: Date.now() - 365 * 864e5 }); let n = 0;
-      const toU = kg => st.profile.units === 'lb' ? Math.round(kg * 2.20462 * 10) / 10 : Math.round(kg * 10) / 10;
-      (r.entries || []).forEach(x => {
-        if (st.body.some(b => Math.abs(b.t - x.t) < 10 * 60e3 && b.src === 'hc')) return;
-        const e = { t: x.t, src: 'hc' }; if (x.weightKg) e.weight = toU(x.weightKg); if (x.bf != null) e.bf = Math.round(x.bf * 10) / 10; if (x.lbmKg) e.lbm = toU(x.lbmKg); if (x.bmr) e.bmr = Math.round(x.bmr);
-        if (Object.keys(e).length > 2) { st.body.push(e); n++; }
-      });
-      if (r.heightM && !st.profile.height) st.profile.height = Math.round(r.heightM * 1000) / 10;
-      const lw = st.body.filter(b => b.weight).sort((a, b) => b.t - a.t)[0]; if (lw) st.profile.bodyweight = lw.weight;
+      const r = await B.call('hc.readBody', { since: Date.now() - 365 * 864e5 });
+      const n = ingestBody(r);
       F.save(); if (!quiet) F.toast(n ? 'Imported ' + n + ' body readings' : 'No new body readings in Samsung Health'); F.render(); return n;
     } catch (e) { if (!quiet) F.toast('Samsung Health: ' + e.message); return 0; }
   };

@@ -37,7 +37,7 @@ import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 
 /** Health Connect access. Samsung Health mirrors Galaxy Watch data (sleep, HR, HRV) into Health Connect. */
-class HealthBridge(private val act: MainActivity) {
+class HealthBridge(private val ctx: android.content.Context, private val act: MainActivity? = null) {
 
     val permissions: Set<String> = setOf(
         HealthPermission.getReadPermission(HeartRateRecord::class),
@@ -63,13 +63,14 @@ class HealthBridge(private val act: MainActivity) {
         HealthPermission.getReadPermission(LeanBodyMassRecord::class),
         HealthPermission.getReadPermission(BasalMetabolicRateRecord::class),
     )
+    companion object { const val BACKGROUND = "android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" }
     private val corePermissions: Set<String> = setOf(
         HealthPermission.getReadPermission(SleepSessionRecord::class),
         HealthPermission.getReadPermission(HeartRateRecord::class),
     )
 
-    private fun sdkStatus(): Int = HealthConnectClient.getSdkStatus(act)
-    private val client: HealthConnectClient by lazy { HealthConnectClient.getOrCreate(act) }
+    private fun sdkStatus(): Int = HealthConnectClient.getSdkStatus(ctx)
+    private val client: HealthConnectClient by lazy { HealthConnectClient.getOrCreate(ctx) }
 
     private fun requireAvailable() {
         if (sdkStatus() != HealthConnectClient.SDK_AVAILABLE) throw IllegalStateException("Health Connect is not available")
@@ -86,6 +87,7 @@ class HealthBridge(private val act: MainActivity) {
             val granted = runCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
             o.put("granted", granted.containsAll(corePermissions))
             o.put("all", granted.containsAll(permissions))
+            o.put("bg", granted.contains(BACKGROUND))
             o.put("grantedCount", granted.intersect(permissions).size)
         }
         return o
@@ -94,12 +96,13 @@ class HealthBridge(private val act: MainActivity) {
     suspend fun requestPermissions(): JSONObject {
         requireAvailable()
         val already = client.permissionController.getGrantedPermissions()
-        if (already.containsAll(permissions)) return JSONObject().put("granted", true)
+        if (already.containsAll(permissions + BACKGROUND)) return JSONObject().put("granted", true).put("all", true)
+        val a = act ?: throw IllegalStateException("Open Forge to grant access")
         val d = CompletableDeferred<Set<String>>()
-        act.hcPermissionResult = d
-        act.hcPermissionLauncher.launch(permissions)
+        a.hcPermissionResult = d
+        a.hcPermissionLauncher.launch(permissions + BACKGROUND)
         val granted = d.await()
-        act.hcPermissionResult = null
+        a.hcPermissionResult = null
         // Core reads are enough to be useful even if a write was declined.
         val core = setOf(
             HealthPermission.getReadPermission(SleepSessionRecord::class),
@@ -266,7 +269,7 @@ class HealthBridge(private val act: MainActivity) {
         requireAvailable()
         val now = Instant.now()
         val recs = read(ExerciseSessionRecord::class, Instant.ofEpochMilli(since), now)
-            .filter { it.metadata.dataOrigin.packageName != act.packageName }
+            .filter { it.metadata.dataOrigin.packageName != ctx.packageName }
         val arr = JSONArray()
         for (r in recs) {
             val type = typeName(r.exerciseType) ?: continue

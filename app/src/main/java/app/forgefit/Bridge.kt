@@ -25,7 +25,7 @@ import java.util.Locale
  */
 class Bridge(private val act: MainActivity) {
 
-    val health = HealthBridge(act)
+    val health = HealthBridge(act, act)
     val strava = StravaClient(act) { type, json -> emit(type, json) }
     val wear = WearLink(act) { json -> emit("watch", json) }
 
@@ -78,6 +78,13 @@ class Bridge(private val act: MainActivity) {
         "strava.activities" -> strava.activities(a.getLong("since"))
         "strava.streams" -> strava.streams(a.getLong("id"))
 
+        "sync.schedule" -> {
+            val on = a.optBoolean("on", true)
+            SyncWorker.schedule(act, on, a.optInt("minutes", 15), a.optBoolean("notify", true))
+            if (on && a.optBoolean("notify", true)) act.askNotificationPermission()
+            JSONObject().put("ok", true)
+        }
+        "sync.inbox" -> Inbox.drain(act)
         "watch.status" -> wear.status()
         "watch.send" -> wear.send(a)
 

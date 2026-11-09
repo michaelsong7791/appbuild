@@ -263,12 +263,16 @@
     // integrations
     const sv = I2.strava || {}; const w = I2.watch || {};
     h += '<div class="col" style="gap:var(--gap)"><div class="card"><div class="card-h"><h3>Connected</h3><button class="icon-btn sm" data-a="refreshInt">' + I.refresh + '</button></div><div class="list">';
-    h += intRow('💙', 'Samsung Health', st.settings.hcGranted ? 'Connected via Health Connect' : 'Sleep, heart rate, HRV, workouts', st.settings.hcGranted ? ((I2.hc && I2.hc.all === false) ? '<button class="btn sm" data-a="connectHealth">Grant new access</button>' : '<span class="tag fresh">On</span>') : '<button class="btn sm" data-a="connectHealth">Connect</button>');
+    h += intRow('💙', 'Samsung Health', st.settings.hcGranted ? 'Connected via Health Connect' : 'Sleep, heart rate, HRV, workouts', st.settings.hcGranted ? ((I2.hc && (I2.hc.all === false || I2.hc.bg === false)) ? '<button class="btn sm" data-a="connectHealth">Grant new access</button>' : '<span class="tag fresh">On</span>') : '<button class="btn sm" data-a="connectHealth">Connect</button>');
     h += intRow('🧡', 'Strava', sv.connected ? 'Connected' + (sv.athlete ? ' as ' + esc(sv.athlete) : '') : sv.configured ? 'Ready to connect' : 'Needs your API app keys', sv.connected ? '<button class="btn sm ghost" data-a="stravaOff">Disconnect</button>' : '<button class="btn sm" data-a="stravaSetup">' + (sv.configured ? 'Connect' : 'Set up') + '</button>');
     h += intRow('⌚', 'Galaxy Watch', w.connected ? esc(w.name || 'Connected') : 'Install the Forge watch app', w.connected ? '<span class="tag fresh">Linked</span>' : '<span class="tag">Offline</span>');
+    const ls = st.settings.lastSync; const ago = ls ? Math.round((Date.now() - ls) / 60000) : null;
+    h += '<div class="li"><div class="grow small muted">' + (F.UI.syncing ? 'Syncing…' : ls ? 'Last synced ' + (ago < 1 ? 'just now' : ago < 60 ? ago + ' min ago' : Math.round(ago / 60) + ' h ago') : 'Not synced yet') + '<div class="tiny dim">Auto: on open, every 5 min while open' + (st.settings.bgSync !== false ? ', every ' + (st.settings.bgMinutes || 15) + ' min in background' : '') + '</div></div><button class="btn sm" data-a="syncAll">' + I.sync + 'Sync now</button></div>';
     h += '</div></div>';
     h += '<div class="card"><div class="card-h"><h3>Settings</h3></div><div class="list">';
     h += setRow('Auto-save workouts to Samsung Health', 'autoHc'); h += setRow('Auto-upload workouts to Strava', 'autoStrava');
+    h += setRow('Background sync (when Forge is closed)', 'bgSync');
+    if (st.settings.bgSync !== false) { h += '<div class="li"><div class="grow">Background sync every</div><div class="seg" style="width:190px">' + [15, 30, 60].map(m => '<button class="' + ((st.settings.bgMinutes || 15) === m ? 'on' : '') + '" data-a="bgMin" data-m="' + m + '">' + m + 'm</button>').join('') + '</div></div>'; h += setRow('Notify me about new imported activities', 'bgNotify'); }
     h += setRow('Vibrate when rest ends', 'restVibrate'); h += setRow('Keep screen on during workouts', 'keepAwake');
     h += '<div class="li"><div class="grow">Units</div><div class="seg" style="width:140px"><button class="' + (p.units === 'kg' ? 'on' : '') + '" data-a="units" data-u="kg">kg</button><button class="' + (p.units === 'lb' ? 'on' : '') + '" data-a="units" data-u="lb">lb</button></div></div>';
     h += '<div class="li"><div class="grow">Bodyweight</div><input class="input" style="width:110px;text-align:center" type="number" inputmode="decimal" value="' + (p.bodyweight || '') + '" data-ch="bw"><span class="muted small">' + p.units + '</span></div>';
@@ -278,8 +282,8 @@
     return h + '</div>';
   };
   const intRow = (ic, name, sub, right) => '<div class="li"><div style="font-size:24px;width:32px;text-align:center">' + ic + '</div><div class="grow"><b>' + name + '</b><div class="small muted">' + sub + '</div></div>' + right + '</div>';
-  const setRow = (lbl, key) => '<div class="li"><div class="grow">' + lbl + '</div><button class="switch ' + (S().settings[key] ? 'on' : '') + '" data-a="toggleSet2" data-k="' + key + '"></button></div>';
-  A.toggleSet2 = d => { const st = S(); st.settings[d.k] = !st.settings[d.k]; F.save(); F.render(); };
+  const setRow = (lbl, key) => '<div class="li"><div class="grow">' + lbl + '</div><button class="switch ' + (S().settings[key] !== false && S().settings[key] !== undefined ? 'on' : '') + '" data-a="toggleSet2" data-k="' + key + '"></button></div>';
+  A.toggleSet2 = d => { const st = S(); st.settings[d.k] = !(st.settings[d.k] !== false && st.settings[d.k] !== undefined ? true : false); if (d.k === 'bgSync' || d.k === 'bgNotify') F.scheduleSync(); F.save(); F.render(); };
   A.refreshInt = () => F.refreshIntegrations();
   A.units = d => {
     const st = S(); const p = st.profile; if (p.units === d.u) return;

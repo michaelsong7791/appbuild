@@ -11,8 +11,8 @@ android {
         applicationId = "app.forgefit"
         minSdk = 28
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.2.0"
     }
 
     signingConfigs {
@@ -55,6 +55,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.0")
     implementation("androidx.webkit:webkit:1.13.0")
     implementation("androidx.health.connect:connect-client:1.1.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")

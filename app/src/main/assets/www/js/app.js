@@ -21,7 +21,7 @@
     active: null,
     game: { xp: 0, ach: {}, mxp: {}, quests: null, lastLevel: 1 },
     health: null,
-    settings: { autoHc: true, autoStrava: false, hcGranted: false, restVibrate: true, keepAwake: true, rpePrompt: true },
+    settings: { autoHc: true, autoStrava: false, hcGranted: false, restVibrate: true, keepAwake: true, rpePrompt: true, bgSync: true, bgMinutes: 15, bgNotify: true },
   });
   let S = DEFAULT();
   try { const raw = B.load(); if (raw) S = Object.assign(DEFAULT(), JSON.parse(raw)); } catch (e) { console.warn('state load failed', e); }
@@ -134,11 +134,10 @@
   // ---------- Health Connect / Samsung Health ----------
   F.refreshHealth = async (force) => {
     if (!S.settings.hcGranted) return;
-    if (!force && S.health && Date.now() - (S.health.at || 0) < 20 * 60e3) return;
+    if (!force && S.health && Date.now() - (S.health.at || 0) < 5 * 60e3) return;
     try {
       const h = await B.call('hc.readRecovery', {});
       S.health = Object.assign({}, h, { at: Date.now() }); save(); render();
-      if (F.importCardio) { F.importCardio(true); F.importBody(true); }
     } catch (e) { console.warn('health', e); }
   };
   F.connectHealth = async () => {
@@ -148,7 +147,7 @@
       const r = await B.call('hc.requestPermissions', {});
       S.settings.hcGranted = !!r.granted; save();
       F.toast(r.granted ? 'Samsung Health connected via Health Connect' : 'Some permissions were not granted');
-      if (r.granted) F.refreshHealth(true);
+      if (r.granted) { F.syncAll && F.syncAll(true); }
       render();
     } catch (e) { F.toast(e.message); }
   };
@@ -191,7 +190,7 @@
   };
 
   B.on('strava', v => { if (v && v.error) F.toast('Strava: ' + v.error); else { F.toast('Strava connected' + (v && v.athlete ? ' — hi ' + v.athlete : '')); } F.refreshIntegrations(); });
-  B.on('resume', () => { F.refreshHealth(); F.refreshIntegrations(); if (S.active && F.syncWatch) F.syncWatch(); });
+  B.on('resume', () => { if (F.syncAll) F.syncAll(false); F.refreshIntegrations(); if (S.active && F.syncWatch) F.syncWatch(); });
 
   // ---------- Celebrations ----------
   F.confetti = () => {
@@ -218,7 +217,7 @@
   F.boot = () => {
     render();
     F.refreshIntegrations();
-    F.refreshHealth();
+    setTimeout(() => { if (F.syncAll) { F.syncAll(true); F.scheduleSync(); } }, 800);
     if (S.active) { UI.stack = [{ t: 'workout' }]; render(); if (F.resumeWorkout) F.resumeWorkout(); }
   };
 })();
