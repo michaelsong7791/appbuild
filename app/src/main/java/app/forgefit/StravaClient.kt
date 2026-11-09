@@ -177,12 +177,30 @@ class StravaClient(private val ctx: Context, private val emit: (String, String) 
                 val o = JSONObject().put("id", x.optLong("id")).put("type", type).put("start", start)
                     .put("elapsed", x.optInt("elapsed_time")).put("moving", x.optInt("moving_time"))
                     .put("distM", x.optDouble("distance", 0.0)).put("name", x.optString("name"))
+                if (x.has("total_elevation_gain")) o.put("elevM", x.optDouble("total_elevation_gain"))
                 if (x.has("average_heartrate")) o.put("hrAvg", x.optDouble("average_heartrate"))
                 if (x.has("average_watts")) o.put("watts", x.optDouble("average_watts"))
                 if (x.has("kilojoules")) o.put("kcal", x.optDouble("kilojoules")) // cycling: kJ of work ≈ kcal burned (~24% efficiency)
                 out.put(o)
             }
             JSONObject().put("activities", out)
+        }
+    }
+
+    /** Distance / altitude / time / heart-rate streams for one activity (for grade-by-grade energy). */
+    suspend fun streams(id: Long): JSONObject {
+        val access = token()
+        return withContext(Dispatchers.IO) {
+            val c = URL("https://www.strava.com/api/v3/activities/$id/streams?keys=distance,altitude,time,heartrate&key_by_type=true").openConnection() as HttpURLConnection
+            val text = try {
+                c.setRequestProperty("Authorization", "Bearer $access")
+                c.connectTimeout = 15000; c.readTimeout = 30000
+                if (c.responseCode !in 200..299) throw IllegalStateException("Strava ${c.responseCode}")
+                c.inputStream.bufferedReader().use { it.readText() }
+            } finally { c.disconnect() }
+            val src = JSONObject(text); val out = JSONObject()
+            for (k in listOf("distance", "altitude", "time", "heartrate")) src.optJSONObject(k)?.optJSONArray("data")?.let { out.put(k, it) }
+            out
         }
     }
 

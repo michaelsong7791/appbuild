@@ -76,6 +76,7 @@ class Bridge(private val act: MainActivity) {
         "strava.disconnect" -> strava.disconnect()
         "strava.upload" -> strava.upload(a)
         "strava.activities" -> strava.activities(a.getLong("since"))
+        "strava.streams" -> strava.streams(a.getLong("id"))
 
         "watch.status" -> wear.status()
         "watch.send" -> wear.send(a)

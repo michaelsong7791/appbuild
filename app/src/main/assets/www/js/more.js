@@ -56,7 +56,7 @@
     const d = F.UI.cdDraft; const T = N.CARDIO[d.type];
     const preview = N.cardioEnergy(cardioFromDraft(d), S());
     let h = '<h2>Log cardio</h2><div class="chips wrap" style="margin:12px 0">' + Object.keys(N.CARDIO).map(k => '<button class="chip ' + (d.type === k ? 'on' : '') + '" data-a="cdSet" data-k="type" data-v="' + k + '">' + N.CARDIO[k].icon + ' ' + esc(N.CARDIO[k].label) + '</button>').join('') + '</div>';
-    h += '<div class="row"><div class="field grow"><label>Duration (min)</label><input class="input" type="number" inputmode="numeric" value="' + (d.min || '') + '" data-in="cdIn" data-k="min"></div>' + (T.dist ? '<div class="field grow"><label>Distance (' + distU() + ')</label><input class="input" type="number" inputmode="decimal" step="0.01" value="' + (d.distKm != null ? Math.round(fromKm(d.distKm) * 100) / 100 : '') + '" data-in="cdIn" data-k="dist"></div>' : '') + '</div>';
+    h += '<div class="row"><div class="field grow"><label>Duration (min)</label><input class="input" type="number" inputmode="numeric" value="' + (d.min || '') + '" data-in="cdIn" data-k="min"></div>' + (T.dist ? '<div class="field grow"><label>Distance (' + distU() + ')</label><input class="input" type="number" inputmode="decimal" step="0.01" value="' + (d.distKm != null ? Math.round(fromKm(d.distKm) * 100) / 100 : '') + '" data-in="cdIn" data-k="dist"></div>' : '') + '</div>' + (['run', 'walk', 'hike', 'cycle'].includes(d.type) ? '<div class="field" style="margin-top:10px"><label>Elevation gain (' + (F.u() === 'lb' ? 'ft' : 'm') + ', optional)</label><input class="input" type="number" inputmode="numeric" value="' + (d.elevM != null ? Math.round(F.u() === 'lb' ? d.elevM * 3.281 : d.elevM) : '') + '" data-in="cdIn" data-k="elev"></div>' : '') + (d.type === 'run_tread' ? '<div class="field" style="margin-top:10px"><label>Treadmill incline (%)</label><input class="input" type="number" inputmode="decimal" value="' + (d.incline || '') + '" data-in="cdIn" data-k="incline"></div>' : '');
     h += '<div class="row" style="margin-top:10px"><div class="field grow"><label>Avg heart rate (optional)</label><input class="input" type="number" inputmode="numeric" value="' + (d.hrAvg || '') + '" data-in="cdIn" data-k="hrAvg"></div>' + ((d.type === 'cycle' || d.type === 'cycle_indoor' || d.type === 'row') ? '<div class="field grow"><label>Avg power W (optional)</label><input class="input" type="number" inputmode="numeric" value="' + (d.watts || '') + '" data-in="cdIn" data-k="watts"></div>' : '') + '</div>';
     h += '<div class="field" style="margin-top:12px"><label>Effort</label><div class="seg">' + [[3, 'Easy'], [5, 'Moderate'], [7, 'Hard'], [9, 'Max']].map(([v, l]) => '<button class="' + (d.rpe === v ? 'on' : '') + '" data-a="cdSet" data-k="rpe" data-v="' + v + '" data-num="1">' + l + '</button>').join('') + '</div></div>';
     h += '<div class="field" style="margin-top:12px"><label>When</label><div class="seg">' + [['now', 'Just finished'], ['today', 'Earlier today'], ['yday', 'Yesterday']].map(([v, l]) => '<button class="' + (d.when === v ? 'on' : '') + '" data-a="cdSet" data-k="when" data-v="' + v + '">' + l + '</button>').join('') + '</div></div>';
@@ -67,11 +67,11 @@
   function cardioFromDraft(d) {
     const now = Date.now(); const min = Math.max(1, +d.min || 1);
     let end = d.when === 'now' ? now : d.when === 'today' ? Math.max(E.startOfDay(now) + 60 * 60e3, now - 3 * 3600e3) : E.startOfDay(now) - 6 * 3600e3;
-    return { id: 'c' + now.toString(36), type: d.type, start: end - min * 60e3, end, min, distKm: d.distKm || null, hrAvg: +d.hrAvg || null, watts: +d.watts || null, rpe: d.rpe, src: 'forge' };
+    return { id: 'c' + now.toString(36), type: d.type, start: end - min * 60e3, end, min, distKm: d.distKm || null, elevM: d.elevM || null, grade: d.type === 'run_tread' && d.incline ? d.incline / 100 : null, hrAvg: +d.hrAvg || null, watts: +d.watts || null, rpe: d.rpe, src: 'forge' };
   }
   A.cdSet = d => { F.UI.cdDraft[d.k] = d.num ? +d.v : d.v; F.render(); };
   let cdT = null;
-  A.cdIn = (d, el) => { const v = parseFloat(el.value); const D = F.UI.cdDraft; if (d.k === 'dist') D.distKm = isNaN(v) ? null : toKm(v); else D[d.k] = isNaN(v) ? null : v; clearTimeout(cdT); cdT = setTimeout(() => { const keep = document.activeElement && document.activeElement.dataset.k; F.render(); if (keep) { const i = document.querySelector('[data-in="cdIn"][data-k="' + keep + '"]'); if (i) { i.focus(); const L = i.value.length; try { i.setSelectionRange(L, L); } catch (e) { } } } }, 600); };
+  A.cdIn = (d, el) => { const v = parseFloat(el.value); const D = F.UI.cdDraft; if (d.k === 'dist') D.distKm = isNaN(v) ? null : toKm(v); else if (d.k === 'elev') D.elevM = isNaN(v) ? null : (F.u() === 'lb' ? v / 3.281 : v); else D[d.k] = isNaN(v) ? null : v; clearTimeout(cdT); cdT = setTimeout(() => { const keep = document.activeElement && document.activeElement.dataset.k; F.render(); if (keep) { const i = document.querySelector('[data-in="cdIn"][data-k="' + keep + '"]'); if (i) { i.focus(); const L = i.value.length; try { i.setSelectionRange(L, L); } catch (e) { } } } }, 600); };
   A.cdSave = async () => {
     const st = S(); const c = cardioFromDraft(F.UI.cdDraft);
     c.energy = N.cardioEnergy(c, st);
@@ -88,16 +88,39 @@
     const exists = (start, type) => st.cardio.some(c => Math.abs(c.start - start) < 3 * 60e3) || st.sessions.some(s => Math.abs(s.date - start) < 3 * 60e3);
     const add = c => { if (c.min < 3 || exists(c.start)) return; c.energy = N.cardioEnergy(c, st); st.cardio.push(c); added++; };
     if (st.settings.hcGranted) {
-      try { const r = await B.call('hc.readSessions', { since }); (r.sessions || []).forEach(x => add({ id: 'hc:' + x.id, type: x.type, start: x.start, end: x.end, min: Math.round((x.end - x.start) / 60000), distKm: x.distM ? x.distM / 1000 : null, hrAvg: x.hrAvg || null, hrMax: x.hrMax || null, deviceKcal: x.kcal || null, title: x.title, src: 'hc' })); } catch (e) { if (!quiet) F.toast('Samsung Health: ' + e.message); }
+      try { const r = await B.call('hc.readSessions', { since }); (r.sessions || []).forEach(x => add({ id: 'hc:' + x.id, type: x.type, start: x.start, end: x.end, min: Math.round((x.end - x.start) / 60000), distKm: x.distM ? x.distM / 1000 : null, elevM: x.elevM || null, hrAvg: x.hrAvg || null, hrMax: x.hrMax || null, deviceKcal: x.kcal || null, title: x.title, src: 'hc' })); } catch (e) { if (!quiet) F.toast('Samsung Health: ' + e.message); }
     }
     const sv = F.UI.integrations.strava || {};
     if (sv.connected) {
-      try { const r = await B.call('strava.activities', { since }); (r.activities || []).forEach(x => add({ id: 'strava:' + x.id, type: x.type, start: x.start, end: x.start + x.elapsed * 1000, min: Math.round(x.moving / 60) || Math.round(x.elapsed / 60), distKm: x.distM ? x.distM / 1000 : null, hrAvg: x.hrAvg || null, watts: x.watts || null, deviceKcal: x.kcal || null, title: x.name, src: 'strava' })); } catch (e) { if (!quiet) F.toast('Strava: ' + e.message); }
+      try {
+        const r = await B.call('strava.activities', { since });
+        for (const x of (r.activities || [])) {
+          const c = { id: 'strava:' + x.id, sid: x.id, type: x.type, start: x.start, end: x.start + x.elapsed * 1000, min: Math.round(x.moving / 60) || Math.round(x.elapsed / 60), distKm: x.distM ? x.distM / 1000 : null, elevM: x.elevM || null, hrAvg: x.hrAvg || null, watts: x.watts || null, deviceKcal: x.type.startsWith('cycle') ? (x.kcal || null) : null, title: x.name, src: 'strava' };
+          if (exists(c.start)) continue;
+          if (['run', 'walk', 'hike'].includes(c.type) && c.distKm) await attachStreams(c);
+          add(c);
+        }
+      } catch (e) { if (!quiet) F.toast('Strava: ' + e.message); }
     }
     st.cardio.sort((a, b) => a.start - b.start);
     F.save(); if (!quiet || added) F.toast(added ? 'Imported ' + added + ' activit' + (added > 1 ? 'ies' : 'y') : 'No new activities found');
     F.render(); return added;
   };
+  /** Altitude/distance (+HR) streams → grade-by-grade energy and HR-based calories. Downsampled to keep storage small. */
+  async function attachStreams(c) {
+    try {
+      const s = await B.call('strava.streams', { id: c.sid });
+      if (s.distance && s.altitude && s.distance.length > 10) {
+        const step = Math.max(1, Math.floor(s.distance.length / 600)); const d = [], a = [];
+        for (let i = 0; i < s.distance.length; i += step) { d.push(Math.round(s.distance[i])); a.push(Math.round(s.altitude[i] * 10) / 10); }
+        c.profile = { d, a };
+      }
+      if (s.heartrate && s.time && s.heartrate.length > 10) {
+        const step = Math.max(1, Math.floor(s.time.length / 400)); c.hr = [];
+        for (let i = 0; i < s.time.length; i += step) c.hr.push([c.start + s.time[i] * 1000, s.heartrate[i]]);
+      }
+    } catch (e) { }
+  }
   A.importCardio = () => { F.toast('Checking Samsung Health & Strava…'); F.importCardio(false); };
 
   V.cardioPanel = () => {
@@ -114,7 +137,7 @@
   };
   function cardioRow(c) {
     const T = N.CARDIO[c.type] || N.CARDIO.other; const e = c.energy || N.cardioEnergy(c, S());
-    return '<button class="exrow" data-a="cardioDetail" data-id="' + c.id + '"><div class="thumb" style="width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--surface2)">' + T.icon + '</div><div class="grow"><div class="nm ellipsis">' + esc(c.title || T.label) + '</div><div class="sub">' + F.fmtDate(c.start) + ' · ' + c.min + ' min' + (c.distKm ? ' · ' + (Math.round(fromKm(c.distKm) * 100) / 100) + ' ' + distU() : '') + (c.hrAvg ? ' · ♥ ' + Math.round(c.hrAvg) : '') + '</div></div><div style="text-align:right"><div class="num" style="font-size:18px">' + e.total + '</div><div class="tiny muted">kcal</div></div>' + (c.src !== 'forge' ? '<span class="tag" style="margin-left:6px">' + (c.src === 'strava' ? 'Strava' : 'S Health') + '</span>' : '') + '</button>';
+    return '<button class="exrow" data-a="cardioDetail" data-id="' + c.id + '"><div class="thumb" style="width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--surface2)">' + T.icon + '</div><div class="grow"><div class="nm ellipsis">' + esc(c.title || T.label) + '</div><div class="sub">' + F.fmtDate(c.start) + ' · ' + c.min + ' min' + (c.distKm ? ' · ' + (Math.round(fromKm(c.distKm) * 100) / 100) + ' ' + distU() : '') + (c.elevM ? ' · ⛰ ' + Math.round(F.u() === 'lb' ? c.elevM * 3.281 : c.elevM) + (F.u() === 'lb' ? ' ft' : ' m') : '') + (c.hrAvg ? ' · ♥ ' + Math.round(c.hrAvg) : '') + '</div></div><div style="text-align:right"><div class="num" style="font-size:18px">' + e.total + '</div><div class="tiny muted">kcal</div></div>' + (c.src !== 'forge' ? '<span class="tag" style="margin-left:6px">' + (c.src === 'strava' ? 'Strava' : 'S Health') + '</span>' : '') + '</button>';
   }
   A.cardioTgt = d => { const st = S(); st.profile.cardioTarget = Math.max(0, Math.min(7, (st.profile.cardioTarget || 0) + (+d.d))); st.plan.cardioDays = E.cardioDays(st.profile, st.plan.sched); F.save(); F.render(); };
   A.cardioDetail = d => F.push({ t: 'cardio', id: d.id });
@@ -125,6 +148,7 @@
     let h = '<div class="screen"><div class="top"><button class="icon-btn" data-a="back">' + I.back + '</button><h2>' + T.icon + ' ' + esc(c.title || T.label) + '</h2><button class="icon-btn" data-a="delCardio" data-id="' + c.id + '" style="color:#ff8a8a">' + I.trash + '</button></div><div class="body" data-scroll="cd"><div class="page"><div class="muted small">' + F.fmtDate(c.start) + ' · ' + new Date(c.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + (c.src !== 'forge' ? ' · from ' + (c.src === 'strava' ? 'Strava' : 'Samsung Health') : '') + '</div>';
     const pace = c.distKm && (c.type === 'run' || c.type === 'run_tread' || c.type === 'walk' || c.type === 'hike') ? c.min / fromKm(c.distKm) : null;
     h += '<div class="stats"><div class="stat"><div class="num">' + c.min + '</div><div class="lbl">Minutes</div></div><div class="stat"><div class="num">' + (c.distKm ? (Math.round(fromKm(c.distKm) * 100) / 100) : '—') + '</div><div class="lbl">' + distU() + '</div></div><div class="stat"><div class="num">' + (pace ? Math.floor(pace) + ':' + String(Math.round(pace % 1 * 60)).padStart(2, '0') : c.hrAvg ? Math.round(c.hrAvg) : '—') + '</div><div class="lbl">' + (pace ? 'min/' + distU() : 'avg HR') + '</div></div></div>';
+    if (c.elevM || c.profile) { const up = c.profile ? N.profileKcal(c.profile.d, c.profile.a, 70, false) : null; const gain = up ? up.up : c.elevM; h += '<div class="card tight row"><div style="font-size:24px">⛰️</div><div class="grow"><b>' + Math.round(F.u() === 'lb' ? gain * 3.281 : gain) + ' ' + (F.u() === 'lb' ? 'ft' : 'm') + ' climbed</b>' + (up ? ' · ' + Math.round(F.u() === 'lb' ? up.down * 3.281 : up.down) + ' ' + (F.u() === 'lb' ? 'ft' : 'm') + ' descended' : '') + '<div class="small muted">' + (c.profile ? 'Calories computed slope-by-slope from the Strava elevation profile' : 'Average gradient ' + (c.distKm ? (c.elevM / c.distKm / 10).toFixed(1) + '%' : '') + ' included in calories and leg muscle load') + '</div></div></div>' + (c.profile ? '<div class="card"><div class="card-h"><h3>Elevation</h3></div>' + F.lineChart(c.profile.d.map((x, i) => [x, c.profile.a[i]]), { color: 'var(--fresh)', h: 100 }) + '</div>' : ''); }
     h += '<div class="grid two">' + energyCard(e) + '<div class="card"><div class="card-h"><h3>Muscle load</h3><span class="small muted">feeds your recovery map</span></div>' + F.bodyPair(vals, 'target') + '</div></div>';
     const syn = c.synced || {};
     if (c.src === 'forge') h += '<div class="card"><div class="card-h"><h3>Sync</h3></div><div class="list"><div class="li"><span style="font-size:22px">💙</span><div class="grow">Samsung Health</div>' + (syn.hc ? '<span class="tag fresh">Saved</span>' : '<button class="btn sm" data-a="cdSync" data-id="' + c.id + '" data-w="hc">Save</button>') + '</div><div class="li"><span style="font-size:22px">🧡</span><div class="grow">Strava</div>' + (syn.strava ? '<span class="tag fresh">Uploaded</span>' : '<button class="btn sm" data-a="cdSync" data-id="' + c.id + '" data-w="strava">Upload</button>') + '</div></div></div>';

@@ -96,16 +96,35 @@
     return 1;
   }
 
+  /** Minetti et al. 2002 net energy cost (J·kg⁻¹·m⁻¹) vs gradient i (−0.45…0.45). */
+  const minettiRun = i => 155.4 * i ** 5 - 30.4 * i ** 4 - 43.3 * i ** 3 + 46.3 * i ** 2 + 19.5 * i + 3.6;
+  const minettiWalk = i => 280.5 * i ** 5 - 58.7 * i ** 4 - 76.8 * i ** 3 + 51.9 * i ** 2 + 19.6 * i + 2.5;
+  /** Net kcal over a distance/altitude profile (arrays in metres). Smooths altitude over ~50 m to suppress GPS noise. */
+  function profileKcal(dist, alt, kg, walking) {
+    if (!dist || !alt || dist.length < 10 || dist.length !== alt.length) return null;
+    const f = walking ? minettiWalk : minettiRun; let J = 0, up = 0, down = 0, segStart = 0;
+    for (let i = 1; i < dist.length; i++) {
+      const dd = dist[i] - dist[segStart];
+      if (dd < 50 && i < dist.length - 1) continue;
+      if (dd <= 0) { segStart = i; continue; }
+      const dh = alt[i] - alt[segStart]; const g = Math.max(-0.45, Math.min(0.45, dh / dd));
+      J += f(g) * kg * dd; if (dh > 0) up += dh; else down -= dh; segStart = i;
+    }
+    return { kcal: J / 4184, up, down };
+  }
+
   /** Cardio METs from pace/power where possible (ACSM metabolic equations), else type × effort. */
   function cardioMet(c, p) {
     const T = CARDIO[c.type] || CARDIO.other; const min = c.min || 1;
     const tier = tierOf(c.rpe, hrr(c.hrAvg, p));
     const vMmin = c.distKm ? c.distKm * 1000 / min : null; // m/min
-    if ((c.type === 'run' || c.type === 'run_tread') && vMmin && vMmin > 100) return { met: (0.2 * vMmin + 0.9 * vMmin * (c.grade || 0) + 3.5) / 3.5, how: 'ACSM running equation (pace)' };
-    if ((c.type === 'walk' || c.type === 'hike') && vMmin && vMmin <= 134) return { met: (0.1 * vMmin + 1.8 * vMmin * (c.grade || (c.type === 'hike' ? 0.05 : 0)) + 3.5) / 3.5, how: 'ACSM walking equation (pace)' };
+    // average uphill grade from total elevation gain (gain spread over the route; ACSM is linear so this equals half the route at 2× grade)
+    const grade = c.grade != null ? c.grade : (c.elevM && c.distKm ? Math.min(0.15, c.elevM / (c.distKm * 1000)) : 0);
+    if ((c.type === 'run' || c.type === 'run_tread') && vMmin && vMmin > 100) return { met: (0.2 * vMmin + 0.9 * vMmin * grade + 3.5) / 3.5, how: 'ACSM running equation (pace' + (grade ? ' + ' + Math.round(c.elevM) + ' m climb' : '') + ')' };
+    if ((c.type === 'walk' || c.type === 'hike') && vMmin && vMmin <= 134) return { met: (0.1 * vMmin + 1.8 * vMmin * (grade || (c.type === 'hike' && !c.elevM ? 0.05 : 0)) + 3.5) / 3.5, how: 'ACSM walking equation (pace' + (grade ? ' + ' + Math.round(c.elevM) + ' m climb' : '') + ')' };
     if ((c.type === 'cycle' || c.type === 'cycle_indoor') && c.watts) return { kcalPerMin: c.watts * 60 / 4184 / 0.24, how: 'power (24% efficiency)' };
     if (c.type === 'row' && c.watts) return { kcalPerMin: (4 * c.watts + 350) / 60, how: 'rowing power (Concept2 formula)' };
-    if (c.type === 'cycle' && vMmin) { const kmh = vMmin * 0.06; return { met: kmh < 16 ? 4 : kmh < 19 ? 6.8 : kmh < 22 ? 8 : kmh < 25 ? 10 : kmh < 30 ? 12 : 15.8, how: 'cycling speed table' }; }
+    if (c.type === 'cycle' && vMmin) { const kmh = vMmin * 0.06; const met = kmh < 16 ? 4 : kmh < 19 ? 6.8 : kmh < 22 ? 8 : kmh < 25 ? 10 : kmh < 30 ? 12 : 15.8; if (c.elevM) { const climb = (kgOf(p) + 10) * 9.81 * c.elevM / 0.24 / 4184 * 0.6; return { met, extraKcal: climb, how: 'cycling speed table + ' + Math.round(c.elevM) + ' m climbing work' }; } return { met, how: 'cycling speed table' }; }
     if (c.type === 'swim' && vMmin) { const per100 = 100 / vMmin; return { met: per100 > 3 ? 6 : per100 > 2.2 ? 8.3 : per100 > 1.75 ? 10 : 11, how: 'swim pace table' }; }
     return { met: T.mets[tier], how: 'MET table × effort' };
   }
@@ -144,8 +163,11 @@
     const hrrv = hrr(c.hrAvg, p, st.health);
     let active, method;
     const m = cardioMet(c, p);
-    const modelGross = m.kcalPerMin ? m.kcalPerMin * min + rest * min * 0.2 : m.met * kg * min / 60;
-    if (c.hr && c.hr.length > 10) { const hk = hrKcal(c.hr, p, kg, rest, st.health); active = Math.max(0, hk.kcal - rest * hk.minutes); method = 'Heart-rate samples'; }
+    const modelGross = (m.kcalPerMin ? m.kcalPerMin * min + rest * min * 0.2 : m.met * kg * min / 60) + (m.extraKcal || 0);
+    const walking = c.type === 'walk' || c.type === 'hike';
+    const prof = (c.type === 'run' || c.type === 'run_tread' || walking) && c.profile ? profileKcal(c.profile.d, c.profile.a, kg, walking) : null;
+    if (prof && prof.kcal > 0) { active = prof.kcal; method = 'Minetti grade model (' + Math.round(prof.up) + ' m up / ' + Math.round(prof.down) + ' m down)'; }
+    else if (c.hr && c.hr.length > 10) { const hk = hrKcal(c.hr, p, kg, rest, st.health); active = Math.max(0, hk.kcal - rest * hk.minutes); method = 'Heart-rate samples'; }
     else if (c.hrAvg) { const g = Math.max(rest, keytel(c.hrAvg, p, kg)) * min; active = Math.max(0, 0.7 * g + 0.3 * modelGross - rest * min); method = 'Average HR + ' + m.how; }
     else { active = Math.max(0, modelGross - rest * min); method = m.how; }
     if (c.deviceKcal) { active = c.deviceKcal; method = 'From ' + (c.src === 'strava' ? 'Strava' : 'Samsung Health'); }
@@ -165,7 +187,8 @@
   function cardioMuscleSets(c, p) {
     const T = CARDIO[c.type] || CARDIO.other; const tier = tierOf(c.rpe, hrr(c.hrAvg, p));
     const f = [0.4, 0.7, 1.0][tier] * (c.min || 0) / 15;
-    const out = {}; for (const m in T.mus) out[m] = T.mus[m] * f; return out;
+    const g = c.elevM && c.distKm ? Math.min(0.12, c.elevM / (c.distKm * 1000)) : 0; // hills load glutes/calves/quads more
+    const out = {}; for (const m in T.mus) out[m] = T.mus[m] * f * (g && ['glutes', 'calves', 'quadriceps', 'hamstrings'].includes(m) ? 1 + g * 5 : 1); return out;
   }
 
   /** Daily energy estimate (today). */
@@ -226,5 +249,5 @@
     return { comp: c, bfCat, ffCat, list: out, lbmD };
   }
 
-  window.Energy = { CARDIO, bodyNow, composition, bmr, strengthEnergy, cardioEnergy, cardioLoad, cardioMuscleSets, today, insights, navyBf, hrMax, tierOf, lbmSeries };
+  window.Energy = { profileKcal, CARDIO, bodyNow, composition, bmr, strengthEnergy, cardioEnergy, cardioLoad, cardioMuscleSets, today, insights, navyBf, hrMax, tierOf, lbmSeries };
 })();

@@ -6,6 +6,7 @@ import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.BasalMetabolicRateRecord
 import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.DistanceRecord
+import androidx.health.connect.client.records.ElevationGainedRecord
 import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.LeanBodyMassRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
@@ -51,6 +52,7 @@ class HealthBridge(private val act: MainActivity) {
         HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
         HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
         HealthPermission.getReadPermission(DistanceRecord::class),
+        HealthPermission.getReadPermission(ElevationGainedRecord::class),
         HealthPermission.getWritePermission(DistanceRecord::class),
         HealthPermission.getReadPermission(WeightRecord::class),
         HealthPermission.getWritePermission(WeightRecord::class),
@@ -274,10 +276,11 @@ class HealthBridge(private val act: MainActivity) {
                 .put("title", r.title ?: "")
             runCatching {
                 val agg = client.aggregate(AggregateRequest(setOf(
-                    DistanceRecord.DISTANCE_TOTAL, HeartRateRecord.BPM_AVG, HeartRateRecord.BPM_MAX,
+                    DistanceRecord.DISTANCE_TOTAL, ElevationGainedRecord.ELEVATION_GAINED_TOTAL, HeartRateRecord.BPM_AVG, HeartRateRecord.BPM_MAX,
                     ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL, TotalCaloriesBurnedRecord.ENERGY_TOTAL,
                 ), range))
                 agg[DistanceRecord.DISTANCE_TOTAL]?.let { o.put("distM", it.inMeters) }
+                agg[ElevationGainedRecord.ELEVATION_GAINED_TOTAL]?.let { o.put("elevM", it.inMeters) }
                 agg[HeartRateRecord.BPM_AVG]?.let { o.put("hrAvg", it) }
                 agg[HeartRateRecord.BPM_MAX]?.let { o.put("hrMax", it) }
                 val active = agg[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories
