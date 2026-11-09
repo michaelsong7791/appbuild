@@ -5,7 +5,7 @@
   const S = () => F.S();
 
   V.screen = top => {
-    const fn = { ex: exScreen, day: dayScreen, workout: workoutScreen, summary: summaryScreen, planSettings: planSettingsScreen }[top.t];
+    const fn = Object.assign({ ex: exScreen, day: dayScreen, workout: workoutScreen, summary: summaryScreen, planSettings: planSettingsScreen }, F.screens || {})[top.t];
     return fn ? fn(top) : '';
   };
   const topbar = (title, right) => '<div class="top"><button class="icon-btn" data-a="back">' + I.back + '</button><h2>' + title + '</h2>' + (right || '') + '</div>';
@@ -60,19 +60,20 @@
   // ---------- Workout player ----------
   function workoutScreen() {
     const st = S(); const a = st.active; if (!a) return '';
-    const it = a.items[a.cur]; const e = E.ex(it.exId); const j = F.curSetIdx(it);
+    const it = a.items[a.cur]; const e = E.ex(it.exId); const j = F.curSetIdx(it); const unit = F.repUnit(it.exId, it); const hold = F.hold();
     let h = '<div class="screen" style="animation:none">';
     h += '<div class="wk-top"><button class="icon-btn" data-a="minimize">' + I.down + '</button><div class="grow"><div class="tiny muted" style="letter-spacing:.1em;font-weight:700">' + esc(a.title.toUpperCase()) + '</div><div class="wk-clock" id="wk-clock">' + F.clock(Date.now() - a.date) + '</div></div><div class="hrpill off" id="wk-hr">' + I.heart + '<span class="v">--</span></div><button class="icon-btn" data-a="wkList">' + I.list + '</button></div>';
     h += '<div class="wk-progress">' + a.items.map((x, k) => '<i class="' + (x.sets.every(s => s.done) ? 'done' : k === a.cur ? 'cur' : '') + '"></i>').join('') + '</div>';
-    h += '<div class="wk-body" data-scroll="wk"><div class="wk-layout"><div class="demo-col col" style="gap:12px">' + F.demo(e.id) + '<div><div class="row between"><div class="tiny muted" style="font-weight:700;letter-spacing:.1em">EXERCISE ' + (a.cur + 1) + ' OF ' + a.items.length + '</div><button class="small" style="color:var(--accent-2);font-weight:700" data-a="ex" data-id="' + e.id + '">How to ›</button></div><h2 style="font-size:26px;margin-top:2px">' + esc(e.n) + '</h2><div class="target" style="margin-top:6px"><span class="tag accent">' + it.sets.length + ' × ' + it.repMin + (it.repMax !== it.repMin ? '–' + it.repMax : '') + ' ' + F.repUnit(it.exId) + '</span><span class="tag">Rest ' + it.rest + 's</span><span class="tag">' + esc(e.pm.map(F.mLabel).join(', ')) + '</span></div>' + (it.note ? '<div class="small muted" style="margin-top:8px">💡 ' + esc(it.note) + '</div>' : '') + '</div>';
-    h += '<div class="watchbox">' + I.watch.replace('<svg', '<svg width="22" height="22" style="color:var(--accent-2)"') + '<div class="grow">Watch reps <b id="wk-reps">' + (a.watch.reps || 0) + '</b><div class="tiny muted">Auto-counted from wrist motion · tap ✓ on the watch to log</div></div></div></div>';
+    h += '<div class="wk-body" data-scroll="wk"><div class="wk-layout"><div class="demo-col col" style="gap:12px">' + F.demo(e.id) + '<div><div class="row between"><div class="tiny muted" style="font-weight:700;letter-spacing:.1em">EXERCISE ' + (a.cur + 1) + ' OF ' + a.items.length + '</div><button class="small" style="color:var(--accent-2);font-weight:700" data-a="ex" data-id="' + e.id + '">How to ›</button></div><h2 style="font-size:26px;margin-top:2px">' + esc(it.alias || e.n) + '</h2>' + (it.alias ? '<div class="small muted">' + esc(e.n) + '</div>' : '') + '<div class="target" style="margin-top:6px"><span class="tag accent">' + it.sets.length + ' × ' + it.repMin + (it.repMax !== it.repMin ? '–' + it.repMax : '') + ' ' + unit + '</span><span class="tag">Rest ' + it.rest + 's</span><span class="tag">' + esc(e.pm.map(F.mLabel).join(', ')) + '</span></div>' + (it.note ? '<div class="small muted" style="margin-top:8px">💡 ' + esc(it.note) + '</div>' : '') + '</div>';
+    if (unit !== 'sec') h += '<div class="watchbox">' + I.watch.replace('<svg', '<svg width="22" height="22" style="color:var(--accent-2)"') + '<div class="grow">Watch reps <b id="wk-reps">' + (a.watch.reps || 0) + '</b><div class="tiny muted">Auto-counted from wrist motion · tap ✓ on the watch to log</div></div></div>';
+    h += '</div>';
     h += '<div class="col" style="gap:10px"><div class="sets">';
     it.sets.forEach((s, k) => {
-      const isCur = k === j; const u = a.u;
+      const isCur = k === j; const u = a.u; const holding = hold && hold.i === a.cur && hold.j === k;
       h += '<div class="set' + (s.done ? ' done' : isCur ? ' cur' : '') + '"><div class="idx">' + (k + 1) + '</div>' +
-        '<div class="stepper"><button data-a="wStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="-1">−</button><div class="vc"><input type="number" inputmode="decimal" value="' + (s.w == null ? '' : s.w) + '" placeholder="–" data-ch="wIn" data-i="' + a.cur + '" data-j="' + k + '"><span class="u">' + u + '</span></div><button data-a="wStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="1">+</button></div>' +
-        '<div class="stepper"><button data-a="rStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="-1">−</button><div class="vc"><input type="number" inputmode="numeric" value="' + (s.r == null ? '' : s.r) + '" data-rin="' + a.cur + '-' + k + '" data-ch="rIn" data-i="' + a.cur + '" data-j="' + k + '"><span class="u">' + F.repUnit(it.exId) + '</span></div><button data-a="rStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="1">+</button></div>' +
-        '<button class="check" data-a="toggleSet" data-i="' + a.cur + '" data-j="' + k + '">' + I.check + '</button>';
+        (unit === 'sec' ? '<div class="stepper" style="justify-content:center">' + (holding ? '<span class="num" id="hold-t" style="font-size:24px;color:var(--accent-2)">' + Math.max(0, Math.ceil(hold.secs - (Date.now() - hold.start) / 1000)) + 's</span>' : '<span class="small muted">' + (s.done ? 'held' : 'timed hold') + '</span>') + '</div>' : '<div class="stepper"><button data-a="wStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="-1">−</button><div class="vc"><input type="number" inputmode="decimal" value="' + (s.w == null ? '' : s.w) + '" placeholder="–" data-ch="wIn" data-i="' + a.cur + '" data-j="' + k + '"><span class="u">' + u + '</span></div><button data-a="wStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="1">+</button></div>') +
+        '<div class="stepper"><button data-a="rStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="-1">−</button><div class="vc"><input type="number" inputmode="numeric" value="' + (s.r == null ? '' : s.r) + '" data-rin="' + a.cur + '-' + k + '" data-ch="rIn" data-i="' + a.cur + '" data-j="' + k + '"><span class="u">' + unit + '</span></div><button data-a="rStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="1">+</button></div>' +
+        '<button class="check" data-a="toggleSet" data-i="' + a.cur + '" data-j="' + k + '"' + (holding ? ' style="background:var(--gold);color:#221"' : '') + '>' + (unit === 'sec' && !s.done && !holding ? I.timer : I.check) + '</button>';
       if (s.done) {
         const meta = [];
         if (s.hrAvg) meta.push('♥ avg ' + s.hrAvg + (s.hrMax ? ' · peak ' + s.hrMax : ''));
@@ -110,7 +111,8 @@
     const newA = (s.newAch || []).map(id => G.ACH.find(a => a.id === id)).filter(Boolean);
     if (newA.length) h += '<div class="card"><div class="card-h"><h3>Unlocked</h3></div><div class="ach-grid">' + newA.map(a => '<div class="ach new"><div class="em">' + a.icon + '</div><div class="t">' + esc(a.name) + '</div></div>').join('') + '</div></div>';
     if (s.xpLines) h += '<div class="card"><div class="card-h"><h3>XP earned</h3></div>' + s.xpLines.map(l => '<div class="xpline"><span>' + esc(l.k) + '</span><b>+' + l.v + '</b></div>').join('') + ((s.quests || []).length ? '<div class="xpline"><span>Quest complete</span><b>✓</b></div>' : '') + '</div>';
-    if ((s.hr || []).length > 5) h += '<div class="card"><div class="card-h"><h3>Heart rate</h3><span class="small muted">avg ' + x.hrAvg + ' · max ' + x.hrMax + (s.hrSource === 'health' ? ' · from Samsung Health' : '') + '</span></div>' + F.lineChart(s.hr.map(p => [p[0], p[1]]), { color: 'var(--hot)' }) + '<div class="small muted" style="margin-top:6px">≈ ' + E.kcal(s, st.profile) + ' kcal (estimated)</div></div>';
+    h += F.energyCard(s.energy || window.Energy.strengthEnergy(s, st));
+    if ((s.hr || []).length > 5) h += '<div class="card"><div class="card-h"><h3>Heart rate</h3><span class="small muted">avg ' + x.hrAvg + ' · max ' + x.hrMax + (s.hrSource === 'health' ? ' · from Samsung Health' : '') + '</span></div>' + F.lineChart(s.hr.map(p => [p[0], p[1]]), { color: 'var(--hot)' }) + '</div>';
     h += '</div><div class="col" style="gap:var(--gap)"><div class="card"><div class="card-h"><h3>Muscles worked</h3></div>' + F.bodyPair(vals, 'target') + '</div>';
     h += '<div class="card"><div class="card-h"><h3>Exercises</h3></div>' + s.items.map(it => { const e = E.ex(it.exId); return '<button class="exrow" data-a="ex" data-id="' + it.exId + '"><img class="thumb" style="width:44px;height:44px" src="' + E.img(it.exId, 0) + '"><div class="grow"><div class="nm ellipsis">' + esc(e ? e.n : it.exId) + '</div><div class="sub">' + it.sets.map(z => F.fmtW(z.w) + '×' + z.r + (z.rpe ? '@' + z.rpe : '')).join('  ') + '</div></div></button>'; }).join('') + '</div>';
     const syn = s.synced || {};
@@ -165,6 +167,7 @@
   // ---------- Sheets ----------
   V.sheet = sh => {
     const st = S();
+    if (F.sheets && F.sheets[sh.t]) return F.sheets[sh.t](sh);
     if (sh.t === 'startOther') {
       return '<h2 style="margin-bottom:12px">Choose a workout</h2>' + st.plan.days.map((d, i) => '<button class="opt" data-a="start" data-idx="' + i + '"><div class="oi">' + I.play.replace('<svg', '<svg width="20" height="20" style="color:var(--accent)"') + '</div><div class="grow"><b>' + esc(d.title) + '</b><span>' + d.items.length + ' exercises · ~' + F.dayMinutes(d) + ' min · ' + esc(F.musclesTxt(F.dayMuscles(d))) + '</span></div></button>').join('') + recommendFresh();
     }
@@ -248,12 +251,13 @@
     if (step === 'days') body = '<h1>Schedule</h1><p class="muted">Pick the days you’ll train. Workouts are planned on exactly these days.</p>' + dayPick(p, 'ob') + '<div class="small muted" style="margin:10px 0 24px">' + p.days.length + ' days/week → <b style="color:var(--text)">' + E.SPLIT_LABEL[E.autoSplit(p.days.length, p.experience)] + '</b></div><div class="field"><label>Session length</label><div class="seg">' + [30, 45, 60, 75, 90].map(m => '<button class="' + (p.sessionMin === m ? 'on' : '') + '" data-a="obSet" data-k="sessionMin" data-v="' + m + '" data-num="1">' + m + ' min</button>').join('') + '</div></div>';
     if (step === 'equip') body = '<h1>Your gear</h1><p class="muted">Only exercises you can actually do will be planned.</p>' + equipPick(p, 'ob');
     if (step === 'focus') body = '<h1>Priorities</h1><p class="muted">Optional: up to 3 muscles to give extra volume.</p>' + focusPick(p, 'ob');
-    if (step === 'body') { body = '<h1>About you</h1><p class="muted">Used for calorie estimates and bodyweight milestones.</p><div class="col" style="gap:14px"><div class="field"><label>Units</label><div class="seg"><button class="' + (p.units === 'kg' ? 'on' : '') + '" data-a="obSet" data-k="units" data-v="kg">kg</button><button class="' + (p.units === 'lb' ? 'on' : '') + '" data-a="obSet" data-k="units" data-v="lb">lb</button></div></div><div class="row"><div class="field grow"><label>Bodyweight (' + p.units + ')</label><input class="input" type="number" inputmode="decimal" value="' + (p.bodyweight || '') + '" data-ch="obBw"></div><div class="field grow"><label>Age</label><input class="input" type="number" inputmode="numeric" value="' + (p.age || '') + '" data-ch="obAge"></div></div><div class="field"><label>Sex (for calorie formula)</label><div class="seg"><button class="' + (p.sex === 'm' ? 'on' : '') + '" data-a="obSet" data-k="sex" data-v="m">Male</button><button class="' + (p.sex === 'f' ? 'on' : '') + '" data-a="obSet" data-k="sex" data-v="f">Female</button></div></div></div>'; cta = 'Forge my plan'; }
+    if (step === 'body') { body = '<h1>About you</h1><p class="muted">Used for calorie estimates and bodyweight milestones.</p><div class="col" style="gap:14px"><div class="field"><label>Units</label><div class="seg"><button class="' + (p.units === 'kg' ? 'on' : '') + '" data-a="obSet" data-k="units" data-v="kg">kg</button><button class="' + (p.units === 'lb' ? 'on' : '') + '" data-a="obSet" data-k="units" data-v="lb">lb</button></div></div><div class="row"><div class="field grow"><label>Height (' + (p.units === 'lb' ? 'in' : 'cm') + ')</label><input class="input" type="number" inputmode="decimal" value="' + (p.heightIn || '') + '" data-ch="obH"></div><div class="field grow"><label>Bodyweight (' + p.units + ')</label><input class="input" type="number" inputmode="decimal" value="' + (p.bodyweight || '') + '" data-ch="obBw"></div><div class="field grow"><label>Age</label><input class="input" type="number" inputmode="numeric" value="' + (p.age || '') + '" data-ch="obAge"></div></div><div class="field"><label>Sex (for calorie formula)</label><div class="seg"><button class="' + (p.sex === 'm' ? 'on' : '') + '" data-a="obSet" data-k="sex" data-v="m">Male</button><button class="' + (p.sex === 'f' ? 'on' : '') + '" data-a="obSet" data-k="sex" data-v="f">Female</button></div></div></div>'; cta = 'Forge my plan'; }
     return '<div class="ob"><div class="ob-top">' + OB_STEPS.map((s, i) => '<i class="' + (i <= UI.ob ? 'on' : '') + '"></i>').join('') + '</div><div class="ob-body" data-scroll="ob">' + body + '</div><div class="ob-foot">' + (UI.ob > 0 ? '<button class="btn ghost" data-a="obBack">Back</button>' : '') + '<button class="btn primary lg grow" data-a="obNext">' + cta + '</button></div></div>';
   };
   A.obName = (d, el) => { F.UI.obDraft.name = el.value.trim(); };
   A.obBw = (d, el) => { F.UI.obDraft.bodyweight = parseFloat(el.value) || null; };
   A.obAge = (d, el) => { F.UI.obDraft.age = parseInt(el.value, 10) || null; };
+  A.obH = (d, el) => { const v = parseFloat(el.value); F.UI.obDraft.heightIn = v || null; F.UI.obDraft.height = v ? (F.UI.obDraft.units === 'lb' ? v * 2.54 : v) : null; };
   A.obBack = () => { F.UI.ob = Math.max(0, F.UI.ob - 1); F.render(); };
   A.obNext = () => {
     const UI = F.UI; const p = UI.obDraft; const step = OB_STEPS[UI.ob];
@@ -261,7 +265,7 @@
     if (step === 'days' && !p.days.length) { F.toast('Pick at least one day'); return; }
     if (step === 'equip' && !p.equipment.length) p.equipment = ['bodyweight'];
     if (UI.ob < OB_STEPS.length - 1) { UI.ob++; F.render(); return; }
-    ['obBw', 'obAge'].forEach(k => { const el = document.querySelector('[data-ch="' + k + '"]'); if (el) A[k]({}, el); });
+    ['obBw', 'obAge', 'obH'].forEach(k => { const el = document.querySelector('[data-ch="' + k + '"]'); if (el) A[k]({}, el); });
     UI.obBuilding = true; F.render();
     setTimeout(() => {
       const st = S(); st.profile = p; st.plan = E.generatePlan(p); UI.obDraft = null; UI.obBuilding = false; UI.ob = 0; F.save(true);

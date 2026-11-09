@@ -111,6 +111,8 @@ class StravaClient(private val ctx: Context, private val emit: (String, String) 
         val name = a.optString("name", "Strength training")
         val desc = a.optString("description")
         val hr = a.optJSONArray("hr")
+        val sport = a.optString("sportType", "WeightTraining").ifBlank { "WeightTraining" }
+        val distM = a.optDouble("distM", 0.0)
         return withContext(Dispatchers.IO) {
             if (hr != null && hr.length() >= 10) {
                 val tcx = buildTcx(start, end, a.optDouble("kcal", 0.0), hr)
@@ -129,19 +131,58 @@ class StravaClient(private val ctx: Context, private val emit: (String, String) 
                     if (activityId > 0) break
                 }
                 if (activityId > 0) {
-                    runCatching { putForm("https://www.strava.com/api/v3/activities/$activityId", access, mapOf("sport_type" to "WeightTraining", "name" to name, "description" to desc)) }
+                    runCatching { putForm("https://www.strava.com/api/v3/activities/$activityId", access, mapOf("sport_type" to sport, "name" to name, "description" to desc)) }
                     JSONObject().put("ok", true).put("activityId", activityId)
                 } else JSONObject().put("ok", true).put("pending", true)
             } else {
                 val local = LocalDateTime.ofInstant(Instant.ofEpochMilli(start), ZoneId.systemDefault())
-                val res = postForm("https://www.strava.com/api/v3/activities", mapOf(
-                    "name" to name, "sport_type" to "WeightTraining", "type" to "WeightTraining",
+                val form = mutableMapOf(
+                    "name" to name, "sport_type" to sport,
                     "start_date_local" to local.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                     "elapsed_time" to ((end - start) / 1000).coerceAtLeast(60).toString(),
                     "description" to desc,
-                ), access)
+                )
+                if (distM > 0) form["distance"] = distM.toString()
+                val res = postForm("https://www.strava.com/api/v3/activities", form, access)
                 JSONObject().put("ok", true).put("activityId", res.optLong("id"))
             }
+        }
+    }
+
+    /** Recent activities (for importing runs/rides/swims into Forge). Skips ones Forge uploaded. */
+    suspend fun activities(since: Long): JSONObject {
+        val access = token()
+        return withContext(Dispatchers.IO) {
+            val c = URL("https://www.strava.com/api/v3/athlete/activities?per_page=60&after=" + (since / 1000)).openConnection() as HttpURLConnection
+            val text = try {
+                c.setRequestProperty("Authorization", "Bearer $access")
+                c.connectTimeout = 15000; c.readTimeout = 30000
+                if (c.responseCode !in 200..299) throw IllegalStateException("Strava ${c.responseCode}")
+                c.inputStream.bufferedReader().use { it.readText() }
+            } finally { c.disconnect() }
+            val src = org.json.JSONArray(text); val out = org.json.JSONArray()
+            for (i in 0 until src.length()) {
+                val x = src.getJSONObject(i)
+                if (x.optString("external_id").startsWith("forge-") || x.optString("name").startsWith("Forge ·")) continue
+                val type = when (x.optString("sport_type", x.optString("type"))) {
+                    "Run", "TrailRun" -> "run"; "VirtualRun" -> "run_tread"; "Walk" -> "walk"; "Hike" -> "hike"
+                    "Ride", "GravelRide", "MountainBikeRide", "EBikeRide" -> "cycle"; "VirtualRide" -> "cycle_indoor"
+                    "Swim" -> "swim"; "Rowing", "VirtualRow" -> "row"; "Elliptical" -> "elliptical"; "StairStepper" -> "stairs"
+                    "HighIntensityIntervalTraining", "Crossfit" -> "hiit"; "Yoga", "Pilates" -> "yoga"
+                    "WeightTraining" -> null
+                    "Soccer", "Tennis", "Badminton", "Basketball", "Volleyball", "Squash", "Pickleball" -> "sport"
+                    else -> "other"
+                } ?: continue
+                val start = runCatching { Instant.parse(x.getString("start_date")).toEpochMilli() }.getOrNull() ?: continue
+                val o = JSONObject().put("id", x.optLong("id")).put("type", type).put("start", start)
+                    .put("elapsed", x.optInt("elapsed_time")).put("moving", x.optInt("moving_time"))
+                    .put("distM", x.optDouble("distance", 0.0)).put("name", x.optString("name"))
+                if (x.has("average_heartrate")) o.put("hrAvg", x.optDouble("average_heartrate"))
+                if (x.has("average_watts")) o.put("watts", x.optDouble("average_watts"))
+                if (x.has("kilojoules")) o.put("kcal", x.optDouble("kilojoules")) // cycling: kJ of work ≈ kcal burned (~24% efficiency)
+                out.put(o)
+            }
+            JSONObject().put("activities", out)
         }
     }
 

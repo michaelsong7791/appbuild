@@ -34,7 +34,10 @@
         case 'hc.requestPermissions': localStorage.setItem('mock.hc', '1'); return ok({ granted: true });
         case 'hc.readRecovery': return ok({ sleepH: 6.9, restingHr: 54, restingHrBase: 52, hrv: 61, hrvBase: 64, steps: 7421 });
         case 'hc.readHeartRate': return ok({ samples: [] });
-        case 'hc.writeWorkout': return ok({ ok: true });
+        case 'hc.writeWorkout': case 'hc.writeCardio': case 'hc.writeBody': return ok({ ok: true });
+        case 'hc.readSessions': return ok({ sessions: [{ id: 'm1', type: 'run', start: Date.now() - 26 * 3600e3, end: Date.now() - 26 * 3600e3 + 42 * 60e3, distM: 7600, hrAvg: 151, hrMax: 172, kcal: 520, title: 'Morning run' }] });
+        case 'hc.readBody': return ok({ heightM: 1.78, entries: [{ t: Date.now() - 20 * 864e5, weightKg: 81.2, bf: 21.4 }, { t: Date.now() - 10 * 864e5, weightKg: 80.6, bf: 20.9 }, { t: Date.now() - 2 * 864e5, weightKg: 80.1, bf: 20.6, bmr: 1780 }] });
+        case 'strava.activities': return ok({ activities: [{ id: 99, type: 'cycle', start: Date.now() - 3 * 864e5, elapsed: 3900, moving: 3600, distM: 28500, hrAvg: 138, watts: 182, kcal: 0, name: 'Han river ride' }] });
         case 'strava.status': return ok({ configured: !!localStorage.getItem('mock.stravaId'), connected: localStorage.getItem('mock.strava') === '1', athlete: localStorage.getItem('mock.strava') === '1' ? 'Michael' : null });
         case 'strava.configure': localStorage.setItem('mock.stravaId', a.clientId || ''); return ok({ ok: true });
         case 'strava.connect': localStorage.setItem('mock.strava', '1'); setTimeout(() => window.__forgeEmit('strava', JSON.stringify({ connected: true, athlete: 'Michael' })), 600); return ok({ opened: true });

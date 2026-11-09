@@ -15,6 +15,9 @@
     profile: null,
     plan: null,
     sessions: [],
+    cardio: [],
+    body: [],
+    addons: {},
     active: null,
     game: { xp: 0, ach: {}, mxp: {}, quests: null, lastLevel: 1 },
     health: null,
@@ -24,6 +27,7 @@
   try { const raw = B.load(); if (raw) S = Object.assign(DEFAULT(), JSON.parse(raw)); } catch (e) { console.warn('state load failed', e); }
   S.game = Object.assign(DEFAULT().game, S.game || {});
   S.settings = Object.assign(DEFAULT().settings, S.settings || {});
+  ['cardio', 'body'].forEach(k => { if (!Array.isArray(S[k])) S[k] = []; }); if (!S.addons) S.addons = {};
   F.S = () => S;
   F.setState = ns => { S = Object.assign(DEFAULT(), ns); save(true); };
 
@@ -53,10 +57,11 @@
   F.todayIdx = () => S.plan && S.plan.sched[new Date().getDay()] != null ? S.plan.sched[new Date().getDay()] : null;
   F.doneToday = () => S.sessions.some(s => E.startOfDay(s.date) === E.startOfDay(Date.now()));
   F.dayMuscles = day => { const v = {}; day.items.forEach(it => { const e = E.ex(it.exId); if (!e) return; const inv = E.involvement(e); for (const m in inv) v[m] = (v[m] || 0) + inv[m] * it.sets; }); const mx = Math.max(1, ...Object.values(v)); for (const m in v) v[m] = Math.max(0.25, v[m] / mx); return v; };
-  F.repUnit = exId => { const e = E.ex(exId); return e && e.f === 'stat' ? 'sec' : 'reps'; };
+  F.repUnit = (exId, it) => { if (it && it.unit) return it.unit; const e = E.ex(exId); return e && e.f === 'stat' ? 'sec' : 'reps'; };
   F.dayMinutes = day => Math.round(day.items.reduce((a, it) => a + E.itemMinutes(it), 0));
-  F.fatigue = () => E.muscleFatigue(S.sessions.concat(S.active ? [S.active] : []), Date.now(), S.health);
-  F.readiness = () => E.readiness(S.health);
+  F.load48 = () => (S.cardio || []).filter(c => c.start > Date.now() - 48 * 3600e3).reduce((a, c) => a + window.Energy.cardioLoad(c, S.profile, S.health), 0);
+  F.fatigue = () => E.muscleFatigue(S.sessions.concat(S.active ? [S.active] : []), Date.now(), S.health, S.cardio, S.profile, { load48: F.load48() });
+  F.readiness = () => E.readiness(S.health, { load48: F.load48() });
 
   // ---------- Navigation ----------
   F.go = tab => { UI.tab = tab; UI.stack = []; UI.sheet = null; render(); const m = document.querySelector('.main'); if (m) m.scrollTop = 0; };
@@ -133,6 +138,7 @@
     try {
       const h = await B.call('hc.readRecovery', {});
       S.health = Object.assign({}, h, { at: Date.now() }); save(); render();
+      if (F.importCardio) { F.importCardio(true); F.importBody(true); }
     } catch (e) { console.warn('health', e); }
   };
   F.connectHealth = async () => {
@@ -156,8 +162,8 @@
       return (e ? e.n : it.exId) + ': ' + d.length + '×' + Math.round(d.reduce((a, x) => a + (x.r || 0), 0) / d.length) + (top ? ' @ ' + F.fmtW(top) + ' ' + (s.u || F.u()) : '');
     });
     const payload = {
-      id: s.id, name: 'Forge · ' + s.title, start: s.date, end: s.end, kcal: E.kcal(s, S.profile),
-      description: st.sets + ' sets · ' + F.fmtVol(st.vol) + ' ' + (s.u || F.u()) + ' volume' + (st.hrAvg ? ' · avg HR ' + st.hrAvg : '') + '\n' + lines.join('\n') + ((s.prs || []).length ? '\n🏆 ' + s.prs.length + ' PR' + (s.prs.length > 1 ? 's' : '') : ''),
+      id: s.id, name: 'Forge · ' + s.title, start: s.date, end: s.end, kcal: (s.energy || window.Energy.strengthEnergy(s, S)).active, exerciseType: s.addon ? ({ yoga: 'yoga', mobility: 'stretching', cali: 'calisthenics', bootcamp: 'bootcamp', core: 'calisthenics' }[s.addon.prog] || 'strength') : 'strength', sportType: s.addon && (s.addon.prog === 'yoga' || s.addon.prog === 'mobility') ? 'Yoga' : 'WeightTraining',
+      description: st.sets + ' sets · ' + F.fmtVol(st.vol) + ' ' + (s.u || F.u()) + ' volume · ' + (s.energy || window.Energy.strengthEnergy(s, S)).total + ' kcal incl. afterburn' + (st.hrAvg ? ' · avg HR ' + st.hrAvg : '') + '\n' + lines.join('\n') + ((s.prs || []).length ? '\n🏆 ' + s.prs.length + ' PR' + (s.prs.length > 1 ? 's' : '') : ''),
       hr: (s.hr || []).map(x => ({ t: x[0], bpm: x[1] })),
     };
     const res = {};

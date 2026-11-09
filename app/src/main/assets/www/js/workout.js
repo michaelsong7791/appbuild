@@ -19,11 +19,11 @@
       const lowReady = opts.adapt && F.readiness().score < 55;
       const w = sug.w != null && lowReady ? E.round(sug.w * 0.9, E.increment(e, F.u()) || 1) : sug.w;
       return {
-        exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, note: sug.note + (adapted ? ' (1 set trimmed — muscle still recovering)' : ''),
-        sets: Array.from({ length: sets }, () => ({ w: w, r: sug.r, done: false })),
+        exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, unit: it.unit, alias: it.alias, note: it.unit === 'sec' ? (it.finisher ? 'Conditioning finisher — go hard for the full time.' : 'Timed hold — tap ✓ to start the countdown.') : sug.note + (adapted ? ' (1 set trimmed — muscle still recovering)' : ''),
+        sets: Array.from({ length: sets }, () => ({ w: it.unit === 'sec' ? null : w, r: it.unit === 'sec' ? it.repMax : sug.r, done: false })),
       };
     });
-    return { id: 's' + Date.now().toString(36), date: Date.now(), title: day.title, dayIdx: opts.dayIdx, planned: !!opts.planned, u: F.u(), items, cur: 0, hr: [], rest: null, watch: { reps: 0, tempo: [], peaks: [] }, setStart: Date.now() };
+    return { id: 's' + Date.now().toString(36), date: Date.now(), title: day.title, dayIdx: opts.dayIdx, planned: !!opts.planned, addon: opts.addon || null, u: F.u(), items, cur: 0, hr: [], rest: null, watch: { reps: 0, tempo: [], peaks: [] }, setStart: Date.now() };
   };
 
   F.startWorkout = (dayIdx, opts) => {
@@ -77,6 +77,10 @@
   A.toggleSet = d => {
     const a = S().active; const it = a.items[+d.i]; const s = it.sets[+d.j];
     if (s.done) { s.done = false; delete s.t; F.save(); F.render(); F.syncWatch(); return; }
+    if (F.repUnit(it.exId, it) === 'sec') {
+      if (hold && hold.i === +d.i && hold.j === +d.j) { const secs = Math.max(1, Math.round((Date.now() - hold.start) / 1000)); clearInterval(hold.timer); hold = null; s.r = secs; s.rEdited = true; completeSet(+d.i, +d.j); return; }
+      startHold(+d.i, +d.j, s.r || it.repMax || 30); return;
+    }
     completeSet(+d.i, +d.j);
   };
 
@@ -112,6 +116,23 @@
     if (!lastOverall) startRest(it.rest, { i, j }); else a.rest = null;
     F.save(true); F.render(); F.syncWatch();
     if (lastOverall) setTimeout(() => F.sheet({ t: 'finish' }), 300);
+  }
+
+  // ---------- Timed holds ----------
+  let hold = null;
+  F.hold = () => hold;
+  function startHold(i, j, secs) {
+    if (hold) clearInterval(hold.timer);
+    B.vibrate(40);
+    hold = { i, j, start: Date.now(), secs, timer: null };
+    hold.timer = setInterval(() => {
+      if (!hold) return;
+      const left = hold.secs - (Date.now() - hold.start) / 1000;
+      const el = document.getElementById('hold-t'); if (el) el.textContent = Math.max(0, Math.ceil(left)) + 's';
+      if (left <= 3 && left > 2.75) B.vibrate(30);
+      if (left <= 0) { const h = hold; clearInterval(h.timer); hold = null; const s = S().active && S().active.items[h.i] && S().active.items[h.i].sets[h.j]; if (s) { s.r = h.secs; completeSet(h.i, h.j); } }
+    }, 250);
+    F.render();
   }
 
   // ---------- Rest timer ----------
@@ -191,7 +212,7 @@
   A.finishAsk = () => F.sheet({ t: 'finish' });
   A.discard = () => {
     if (!confirm('Discard this workout? Nothing will be saved.')) return;
-    const st = S(); st.active = null; F.save(true); clearInterval(tick); clearInterval(restTick); B.keepAwake(false); F.syncWatch();
+    if (hold) { clearInterval(hold.timer); hold = null; } const st = S(); st.active = null; F.save(true); clearInterval(tick); clearInterval(restTick); B.keepAwake(false); F.syncWatch();
     F.UI.stack = []; F.UI.sheet = null; F.render();
   };
   A.finish = async () => {
@@ -199,10 +220,12 @@
     clearInterval(tick); clearInterval(restTick); B.keepAwake(false);
     a.end = Date.now(); a.rest = null;
     // keep only exercises with done sets
-    a.items = a.items.filter(it => it.sets.some(s => s.done)).map(it => ({ exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, sets: it.sets.filter(s => s.done).map(s => { const o = Object.assign({}, s); delete o.rEdited; return o; }) }));
-    const session = { id: a.id, date: a.date, end: a.end, title: a.title, dayIdx: a.dayIdx, planned: a.planned, u: a.u, items: a.items, hr: a.hr, hrSource: a.hr.length ? 'watch' : null, synced: {} };
+    a.items = a.items.filter(it => it.sets.some(s => s.done)).map(it => ({ exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, unit: it.unit, alias: it.alias, sets: it.sets.filter(s => s.done).map(s => { const o = Object.assign({}, s); delete o.rEdited; return o; }) }));
+    const session = { id: a.id, date: a.date, end: a.end, title: a.title, dayIdx: a.dayIdx, planned: a.planned, addon: a.addon, u: a.u, items: a.items, hr: a.hr, hrSource: a.hr.length ? 'watch' : null, synced: {} };
     if (!session.items.length) { st.active = null; F.save(true); F.UI.stack = []; F.UI.sheet = null; F.render(); F.syncWatch(); F.toast('No sets logged — workout discarded'); return; }
     session.prs = E.detectPRs(st.sessions, session);
+    session.energy = window.Energy.strengthEnergy(session, st);
+    if (a.addon) { const pr = st.addons[a.addon.prog] = st.addons[a.addon.prog] || { done: [] }; if (!pr.done.includes(a.addon.idx)) pr.done.push(a.addon.idx); pr.last = Date.now(); }
     const before = G.levelOf(st.game.xp).level;
     const xp = G.sessionXp(session, session.prs, session.planned);
     session.xp = xp.total; session.xpLines = xp.lines;

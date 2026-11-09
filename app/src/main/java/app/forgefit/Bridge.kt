@@ -65,12 +65,17 @@ class Bridge(private val act: MainActivity) {
         "hc.readRecovery" -> health.readRecovery()
         "hc.readHeartRate" -> health.readHeartRate(a.getLong("start"), a.getLong("end"))
         "hc.writeWorkout" -> health.writeWorkout(a)
+        "hc.readSessions" -> health.readSessions(a.getLong("since"))
+        "hc.writeCardio" -> health.writeCardio(a)
+        "hc.readBody" -> health.readBody(a.getLong("since"))
+        "hc.writeBody" -> health.writeBody(a)
 
         "strava.status" -> strava.status()
         "strava.configure" -> strava.configure(a.getString("clientId"), a.getString("clientSecret"))
         "strava.connect" -> strava.connect()
         "strava.disconnect" -> strava.disconnect()
         "strava.upload" -> strava.upload(a)
+        "strava.activities" -> strava.activities(a.getLong("since"))
 
         "watch.status" -> wear.status()
         "watch.send" -> wear.send(a)

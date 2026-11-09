@@ -60,10 +60,16 @@
   }
   function estRpeFromVloss(v) { if (v == null) return null; return v > 0.35 ? 9.5 : v > 0.25 ? 9 : v > 0.15 ? 8 : 7; }
 
-  function readiness(health) {
+  function readiness(health, extra) {
     // 0..100. Missing data → neutral 75.
-    if (!health) return { score: 75, parts: [] };
-    let score = 85; const parts = [];
+    extra = extra || {};
+    if (!health && !extra.load48) return { score: 75, parts: [] };
+    health = health || {};
+    let score = health.sleepH == null && health.restingHr == null ? 78 : 85; const parts = [];
+    if (extra.load48) {
+      const pen = Math.min(18, Math.max(0, (extra.load48 - 60) / 12));
+      score -= pen; parts.push({ k: 'Cardio load 48h', v: Math.round(extra.load48) + ' TRIMP', good: pen < 6 });
+    }
     if (health.sleepH != null) {
       const d = health.sleepH - 7.5; const p = d < 0 ? Math.min(30, -d * 9) : Math.min(5, d * 2) * -1;
       score -= p; parts.push({ k: 'Sleep', v: health.sleepH.toFixed(1) + ' h', good: d > -0.75 });
@@ -80,9 +86,9 @@
   }
 
   /** Per-muscle fatigue 0..100 at time `now`. */
-  function muscleFatigue(sessions, now, health) {
+  function muscleFatigue(sessions, now, health, cardio, prof, extra) {
     now = now || Date.now();
-    const r = readiness(health).score;
+    const r = readiness(health, extra).score;
     const tauMul = clamp(1 + (70 - r) / 100, 0.85, 1.35);
     const F = {}; Object.keys(MUSCLES).forEach(m => { F[m] = 0; });
     const horizon = now - 8 * DAY;
@@ -94,10 +100,15 @@
         it.sets.forEach(st => {
           if (!st.done) return;
           const t = st.t || s.date; const dtH = Math.max(0, (now - t) / H);
-          const eff = setEffort(st);
+          const eff = setEffort(st) * (e.cat === 'st' ? 0.1 : e.cat === 'p' ? 0.8 : 1);
           for (const m in inv) F[m] += inv[m] * eff * Math.exp(-dtH / (MUSCLES[m].tau * tauMul));
         });
       });
+    });
+    (cardio || []).forEach(c => {
+      const t = c.end || c.start; if (t < horizon || !window.Energy) return;
+      const ms = window.Energy.cardioMuscleSets(c, prof || {}); const dtH = Math.max(0, (now - t) / H);
+      for (const m in ms) if (m in F) F[m] += ms[m] * 0.85 * Math.exp(-dtH / (MUSCLES[m].tau * tauMul));
     });
     const out = {};
     for (const m in F) out[m] = Math.round(100 * (1 - Math.exp(-F[m] / CAPACITY)));
@@ -154,7 +165,7 @@
     const kw = slot.kw.map(k => k.toLowerCase());
     const blocked = new Set(prof.blocked || []); const fav = new Set(prof.favorites || []);
     const r = opts.rand || Math.random;
-    return DB.filter(e => e.pm.includes(slot.m) && hasEquip(e, eq) && !blocked.has(e.id))
+    return DB.filter(e => (!e.cat || e.cat === 's') && e.pm.includes(slot.m) && hasEquip(e, eq) && !blocked.has(e.id))
       .map(e => {
         const n = e.n.toLowerCase(); let sc = e.t * 12;
         if (kw.some(k => n.includes(k))) sc += 16;
@@ -171,9 +182,10 @@
       }).sort((a, b) => b.sc - a.sc);
   }
 
-  function scheme(goal, exp, isCompound) {
+  function scheme(goal, exp, isCompound, preserve) {
     const g = GOALS[goal] || GOALS.general;
-    const [lo, hi, sets, rest] = isCompound ? g.c : g.i;
+    let [lo, hi, sets, rest] = isCompound ? g.c : g.i;
+    if (preserve && isCompound) { lo = 5; hi = 8; rest = Math.max(rest, 150); }
     let s = sets;
     if (exp === 'beginner') s = Math.max(2, s - (isCompound ? 0 : 1));
     if (exp === 'advanced' && isCompound) s += 1;
@@ -195,7 +207,7 @@
       const c = candidates(sl, prof, used, { rand });
       if (!c.length) return;
       const e = c[0].e; used.add(e.id);
-      const sc = e.f === 'stat' ? { sets: 3, repMin: 30, repMax: 60, rest: 60 } : scheme(prof.goal, prof.experience, e.mech === 'c' && sl.pat !== 'iso');
+      const sc = e.f === 'stat' ? { sets: 3, repMin: 30, repMax: 60, rest: 60 } : scheme(prof.goal, prof.experience, e.mech === 'c' && sl.pat !== 'iso', prof.preserve);
       if (sl.focus || (prof.focus || []).includes(sl.m)) sc.sets += 1;
       items.push(Object.assign({ exId: e.id, m: sl.m, low: !!sl.low, slot: sl }, sc));
     });
@@ -207,6 +219,11 @@
     while (total() > budget && guard--) { const big = items.slice().sort((a, b) => b.sets - a.sets)[0]; if (big.sets <= 2) break; big.sets--; }
     while (total() > budget && items.length > 3) items.pop();
     items.forEach(i => { delete i.slot; delete i.low; });
+    if (prof.finisher) {
+      const pool = ['Mountain_Climbers', 'Star_Jump', 'One-Arm_Kettlebell_Swings', 'Rope_Jumping', 'Freehand_Jump_Squat', 'Battling_Ropes'].filter(id => BY[id] && (BY[id].eq === 'bodyweight' || hasEquip(BY[id], prof.equipment)));
+      const pick = pool[Math.floor(rand() * pool.length)];
+      if (pick) items.push({ exId: pick, m: BY[pick].pm[0], sets: 4, repMin: 30, repMax: 30, rest: 30, unit: 'sec', finisher: true });
+    }
     return { title: tpl.title, items };
   }
 
@@ -219,7 +236,17 @@
     // map weekdays -> template index (rotating)
     const sched = {};
     prof.days.slice().sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).forEach((dow, i) => { sched[dow] = i % days.length; });
-    return { split, seed, created: Date.now(), days, sched };
+    return { split, seed, created: Date.now(), days, sched, cardioDays: cardioDays(prof, sched) };
+  }
+
+  /** Spread N cardio sessions over the week: rest days first (not the day before a leg-heavy day if avoidable). */
+  function cardioDays(prof, sched) {
+    const n = Math.min(7, prof.cardioTarget || 0); if (!n) return [];
+    const order = [1, 2, 3, 4, 5, 6, 0];
+    const rest = order.filter(d => sched[d] == null);
+    const lift = order.filter(d => sched[d] != null);
+    const pickSpread = (list, k) => { if (k >= list.length) return list.slice(); const out = []; for (let i = 0; i < k; i++) out.push(list[Math.floor((i + 0.5) * list.length / k)]); return out; };
+    const a = pickSpread(rest, n); return a.concat(pickSpread(lift, n - a.length));
   }
 
   function alternatives(exId, prof, limit) {
@@ -342,7 +369,7 @@
     MUSCLES, MAJOR, EQUIPMENT, GOALS, TEMPLATES, SPLIT_LABEL, DAY, H,
     loadDb, ex, img, involvement, all: () => DB,
     readiness, muscleFatigue, setEffort, estRpeFromVloss,
-    generatePlan, autoSplit, alternatives, candidates, scheme, itemMinutes, hasEquip,
+    generatePlan, cardioDays, autoSplit, alternatives, candidates, scheme, itemMinutes, hasEquip,
     exHistory, suggest, detectPRs, sessionStats, kcal, weeklyMuscleSets, e1rm, increment,
     clamp, round, startOfWeek, startOfDay, isoWeek, toKg,
   };

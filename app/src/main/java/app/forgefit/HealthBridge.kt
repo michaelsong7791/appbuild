@@ -3,6 +3,16 @@ package app.forgefit
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.BasalMetabolicRateRecord
+import androidx.health.connect.client.records.BodyFatRecord
+import androidx.health.connect.client.records.DistanceRecord
+import androidx.health.connect.client.records.HeightRecord
+import androidx.health.connect.client.records.LeanBodyMassRecord
+import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.records.WeightRecord
+import androidx.health.connect.client.units.Length
+import androidx.health.connect.client.units.Mass
+import androidx.health.connect.client.units.Percentage
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
@@ -38,6 +48,22 @@ class HealthBridge(private val act: MainActivity) {
         HealthPermission.getReadPermission(ExerciseSessionRecord::class),
         HealthPermission.getWritePermission(ExerciseSessionRecord::class),
         HealthPermission.getWritePermission(ActiveCaloriesBurnedRecord::class),
+        HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
+        HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
+        HealthPermission.getReadPermission(DistanceRecord::class),
+        HealthPermission.getWritePermission(DistanceRecord::class),
+        HealthPermission.getReadPermission(WeightRecord::class),
+        HealthPermission.getWritePermission(WeightRecord::class),
+        HealthPermission.getReadPermission(BodyFatRecord::class),
+        HealthPermission.getWritePermission(BodyFatRecord::class),
+        HealthPermission.getReadPermission(HeightRecord::class),
+        HealthPermission.getWritePermission(HeightRecord::class),
+        HealthPermission.getReadPermission(LeanBodyMassRecord::class),
+        HealthPermission.getReadPermission(BasalMetabolicRateRecord::class),
+    )
+    private val corePermissions: Set<String> = setOf(
+        HealthPermission.getReadPermission(SleepSessionRecord::class),
+        HealthPermission.getReadPermission(HeartRateRecord::class),
     )
 
     private fun sdkStatus(): Int = HealthConnectClient.getSdkStatus(act)
@@ -56,7 +82,8 @@ class HealthBridge(private val act: MainActivity) {
         val o = JSONObject().put("status", st)
         if (st == "available") {
             val granted = runCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
-            o.put("granted", granted.containsAll(permissions))
+            o.put("granted", granted.containsAll(corePermissions))
+            o.put("all", granted.containsAll(permissions))
             o.put("grantedCount", granted.intersect(permissions).size)
         }
         return o
@@ -152,7 +179,7 @@ class HealthBridge(private val act: MainActivity) {
             startTime = start, startZoneOffset = zone,
             endTime = end, endZoneOffset = zone,
             metadata = Metadata.manualEntry(clientRecordId = "forge-" + a.optString("id").ifBlank { a.getLong("start").toString() }),
-            exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING,
+            exerciseType = exerciseTypeFor(a.optString("exerciseType", "strength")),
             title = a.optString("name", "Strength training").take(100),
             notes = a.optString("description").take(1000),
         )
@@ -189,5 +216,137 @@ class HealthBridge(private val act: MainActivity) {
         }
         val res = client.insertRecords(records)
         return JSONObject().put("ok", true).put("ids", res.recordIdsList.size)
+    }
+
+    // ---------- Cardio / other workouts ----------
+    private fun typeName(t: Int): String? = when (t) {
+        ExerciseSessionRecord.EXERCISE_TYPE_RUNNING -> "run"
+        ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL -> "run_tread"
+        ExerciseSessionRecord.EXERCISE_TYPE_WALKING -> "walk"
+        ExerciseSessionRecord.EXERCISE_TYPE_HIKING -> "hike"
+        ExerciseSessionRecord.EXERCISE_TYPE_BIKING -> "cycle"
+        ExerciseSessionRecord.EXERCISE_TYPE_BIKING_STATIONARY -> "cycle_indoor"
+        ExerciseSessionRecord.EXERCISE_TYPE_SWIMMING_POOL, ExerciseSessionRecord.EXERCISE_TYPE_SWIMMING_OPEN_WATER -> "swim"
+        ExerciseSessionRecord.EXERCISE_TYPE_ROWING, ExerciseSessionRecord.EXERCISE_TYPE_ROWING_MACHINE -> "row"
+        ExerciseSessionRecord.EXERCISE_TYPE_ELLIPTICAL -> "elliptical"
+        ExerciseSessionRecord.EXERCISE_TYPE_STAIR_CLIMBING, ExerciseSessionRecord.EXERCISE_TYPE_STAIR_CLIMBING_MACHINE -> "stairs"
+        ExerciseSessionRecord.EXERCISE_TYPE_HIGH_INTENSITY_INTERVAL_TRAINING -> "hiit"
+        ExerciseSessionRecord.EXERCISE_TYPE_YOGA, ExerciseSessionRecord.EXERCISE_TYPE_PILATES -> "yoga"
+        ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING, ExerciseSessionRecord.EXERCISE_TYPE_WEIGHTLIFTING -> null
+        ExerciseSessionRecord.EXERCISE_TYPE_SOCCER, ExerciseSessionRecord.EXERCISE_TYPE_BASKETBALL, ExerciseSessionRecord.EXERCISE_TYPE_TENNIS,
+        ExerciseSessionRecord.EXERCISE_TYPE_BADMINTON, ExerciseSessionRecord.EXERCISE_TYPE_VOLLEYBALL -> "sport"
+        else -> "other"
+    }
+
+    private fun typeCode(name: String): Int = when (name) {
+        "run" -> ExerciseSessionRecord.EXERCISE_TYPE_RUNNING
+        "run_tread" -> ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL
+        "walk" -> ExerciseSessionRecord.EXERCISE_TYPE_WALKING
+        "hike" -> ExerciseSessionRecord.EXERCISE_TYPE_HIKING
+        "cycle" -> ExerciseSessionRecord.EXERCISE_TYPE_BIKING
+        "cycle_indoor" -> ExerciseSessionRecord.EXERCISE_TYPE_BIKING_STATIONARY
+        "swim" -> ExerciseSessionRecord.EXERCISE_TYPE_SWIMMING_POOL
+        "row" -> ExerciseSessionRecord.EXERCISE_TYPE_ROWING_MACHINE
+        "elliptical" -> ExerciseSessionRecord.EXERCISE_TYPE_ELLIPTICAL
+        "stairs" -> ExerciseSessionRecord.EXERCISE_TYPE_STAIR_CLIMBING_MACHINE
+        "hiit" -> ExerciseSessionRecord.EXERCISE_TYPE_HIGH_INTENSITY_INTERVAL_TRAINING
+        "yoga" -> ExerciseSessionRecord.EXERCISE_TYPE_YOGA
+        "stretching" -> ExerciseSessionRecord.EXERCISE_TYPE_STRETCHING
+        "calisthenics" -> ExerciseSessionRecord.EXERCISE_TYPE_CALISTHENICS
+        "bootcamp" -> ExerciseSessionRecord.EXERCISE_TYPE_BOOT_CAMP
+        "strength" -> ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING
+        else -> ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT
+    }
+    fun exerciseTypeFor(name: String?): Int = typeCode(name ?: "strength")
+
+    /** Workouts recorded by other apps (Samsung Health / Galaxy Watch, etc.) since [since]. */
+    suspend fun readSessions(since: Long): JSONObject {
+        requireAvailable()
+        val now = Instant.now()
+        val recs = read(ExerciseSessionRecord::class, Instant.ofEpochMilli(since), now)
+            .filter { it.metadata.dataOrigin.packageName != act.packageName }
+        val arr = JSONArray()
+        for (r in recs) {
+            val type = typeName(r.exerciseType) ?: continue
+            val range = TimeRangeFilter.between(r.startTime, r.endTime)
+            val o = JSONObject().put("id", r.metadata.id).put("type", type)
+                .put("start", r.startTime.toEpochMilli()).put("end", r.endTime.toEpochMilli())
+                .put("title", r.title ?: "")
+            runCatching {
+                val agg = client.aggregate(AggregateRequest(setOf(
+                    DistanceRecord.DISTANCE_TOTAL, HeartRateRecord.BPM_AVG, HeartRateRecord.BPM_MAX,
+                    ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL, TotalCaloriesBurnedRecord.ENERGY_TOTAL,
+                ), range))
+                agg[DistanceRecord.DISTANCE_TOTAL]?.let { o.put("distM", it.inMeters) }
+                agg[HeartRateRecord.BPM_AVG]?.let { o.put("hrAvg", it) }
+                agg[HeartRateRecord.BPM_MAX]?.let { o.put("hrMax", it) }
+                val active = agg[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories
+                val total = agg[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories
+                if (active != null && active > 0) o.put("kcal", active)
+                else if (total != null && total > 0) {
+                    // total includes resting energy; subtract ~BMR share (1 kcal/kg/h ≈ 1.2 kcal/min for an average adult)
+                    val mins = ChronoUnit.SECONDS.between(r.startTime, r.endTime) / 60.0
+                    o.put("kcal", (total - mins * 1.2).coerceAtLeast(0.0))
+                }
+            }
+            arr.put(o)
+        }
+        return JSONObject().put("sessions", arr)
+    }
+
+    /** Write a cardio/other session logged in Forge. */
+    suspend fun writeCardio(a: JSONObject): JSONObject {
+        requireAvailable()
+        val start = Instant.ofEpochMilli(a.getLong("start"))
+        val end = Instant.ofEpochMilli(a.getLong("end")).let { if (!it.isAfter(start)) start.plusSeconds(60) else it }
+        val zone: ZoneOffset = ZoneId.systemDefault().rules.getOffset(start)
+        val records = mutableListOf<Record>()
+        records += ExerciseSessionRecord(
+            startTime = start, startZoneOffset = zone, endTime = end, endZoneOffset = zone,
+            metadata = Metadata.manualEntry(clientRecordId = "forge-" + a.optString("id").ifBlank { a.getLong("start").toString() }),
+            exerciseType = typeCode(a.optString("type")),
+            title = a.optString("name", "Workout").take(100),
+        )
+        val dist = a.optDouble("distM", 0.0)
+        if (dist > 0) records += DistanceRecord(startTime = start, startZoneOffset = zone, endTime = end, endZoneOffset = zone, distance = Length.meters(dist), metadata = Metadata.manualEntry())
+        val kcal = a.optDouble("kcal", 0.0)
+        if (kcal > 0) records += ActiveCaloriesBurnedRecord(startTime = start, startZoneOffset = zone, endTime = end, endZoneOffset = zone, energy = Energy.kilocalories(kcal), metadata = Metadata.manualEntry())
+        client.insertRecords(records)
+        return JSONObject().put("ok", true)
+    }
+
+    // ---------- Body composition ----------
+    /** Weight, body fat, lean mass, BMR (Galaxy Watch BIA scans land here via Samsung Health) + latest height. */
+    suspend fun readBody(since: Long): JSONObject {
+        requireAvailable()
+        val from = Instant.ofEpochMilli(since); val now = Instant.now()
+        data class E(var weightKg: Double? = null, var bf: Double? = null, var lbmKg: Double? = null, var bmr: Double? = null)
+        val byTime = sortedMapOf<Long, E>()
+        fun slot(t: Instant): E { val k = t.toEpochMilli() / 600_000L * 600_000L; return byTime.getOrPut(k) { E() } } // merge within 10 min
+        read(WeightRecord::class, from, now).forEach { slot(it.time).weightKg = it.weight.inKilograms }
+        read(BodyFatRecord::class, from, now).forEach { slot(it.time).bf = it.percentage.value }
+        read(LeanBodyMassRecord::class, from, now).forEach { slot(it.time).lbmKg = it.mass.inKilograms }
+        read(BasalMetabolicRateRecord::class, from, now).forEach { slot(it.time).bmr = it.basalMetabolicRate.inKilocaloriesPerDay }
+        val arr = JSONArray()
+        byTime.forEach { (t, e) ->
+            val o = JSONObject().put("t", t)
+            e.weightKg?.let { o.put("weightKg", it) }; e.bf?.let { o.put("bf", it) }
+            e.lbmKg?.let { o.put("lbmKg", it) }; e.bmr?.let { o.put("bmr", it) }
+            arr.put(o)
+        }
+        val res = JSONObject().put("entries", arr)
+        read(HeightRecord::class, now.minus(3650, ChronoUnit.DAYS), now).maxByOrNull { it.time }?.let { res.put("heightM", it.height.inMeters) }
+        return res
+    }
+
+    suspend fun writeBody(a: JSONObject): JSONObject {
+        requireAvailable()
+        val now = Instant.now(); val zone = ZoneId.systemDefault().rules.getOffset(now)
+        val records = mutableListOf<Record>()
+        if (!a.isNull("weightKg")) records += WeightRecord(time = now, zoneOffset = zone, weight = Mass.kilograms(a.getDouble("weightKg")), metadata = Metadata.manualEntry())
+        if (!a.isNull("bf")) records += BodyFatRecord(time = now, zoneOffset = zone, percentage = Percentage(a.getDouble("bf")), metadata = Metadata.manualEntry())
+        if (!a.isNull("heightM")) records += HeightRecord(time = now, zoneOffset = zone, height = Length.meters(a.getDouble("heightM")), metadata = Metadata.manualEntry())
+        if (records.isNotEmpty()) client.insertRecords(records)
+        return JSONObject().put("ok", true).put("count", records.size)
     }
 }

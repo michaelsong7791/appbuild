@@ -40,6 +40,7 @@
     h += '<div class="row between"><div class="hello">' + levelRing() + '<div><div class="muted small">' + hi + (p.name ? ', ' + esc(p.name) : '') + '</div><h2>' + esc(G.title(L.level)) + '</h2><div class="tiny dim">' + L.into + ' / ' + L.need + ' XP to level ' + (L.level + 1) + '</div></div></div>';
     h += '<div class="streak" title="Weekly streak">' + I.flame.replace('<svg', '<svg width="18" height="18" style="color:var(--accent)"') + '<span class="num" style="font-size:18px">' + ws.streak + '</span><span class="tiny muted">WK</span></div></div>';
     h += '<div class="grid side"><div class="col" style="gap:var(--gap)">' + todayCard() + weekStrip() + '</div><div class="col" style="gap:var(--gap)">' + readinessCard() + recoveryCard() + '</div></div>';
+    h += quickRow() + extrasRow();
     h += questsCard();
     return h + '</div>';
   };
@@ -102,6 +103,22 @@
       (worst.length ? '<div class="col" style="gap:6px;margin-top:12px">' + worst.map(m => '<div><div class="row between small"><span>' + F.mLabel(m) + '</span><span class="muted">' + (100 - fat[m]) + '% recovered</span></div><div class="bar fresh"><i style="width:' + (100 - fat[m]) + '%"></i></div></div>').join('') + '</div>' : '') + '</div>';
   }
 
+  function quickRow() {
+    const t = window.Energy.today(S());
+    return '<div class="row wrap" style="gap:8px"><button class="btn" data-a="logCardio">🏃 Log cardio</button><button class="btn" data-a="planSeg" data-s="addons">🧱 Add-ons</button><button class="btn" data-a="logBody">⚖️ Log body</button><button class="btn ghost" data-a="progSeg" data-s="energy">🔥 ' + t.total.toLocaleString() + ' kcal today</button></div>';
+  }
+  function extrasRow() {
+    const st = S(); let h = '';
+    const ad = (window.ADDONS || []).filter(p => { const pr = st.addons[p.id]; return pr && pr.done.length && F.addonNext(p) >= 0; });
+    const ins = window.Energy.insights(st).list.filter(x => x.actions && x.actions.length)[0];
+    const cdToday = (st.plan.cardioDays || []).includes(new Date().getDay()) && !st.cardio.some(c => c.start >= E.startOfDay(Date.now()));
+    if (!ad.length && !ins && !cdToday) return '';
+    h += '<div class="grid two">';
+    if (cdToday) h += '<div class="card tight row"><div style="font-size:28px">🏃</div><div class="grow"><b>Cardio day</b><div class="small muted">' + (st.profile.goal === 'fatloss' ? '30–45 min, moderate' : '25–40 min easy (zone 2)') + ' — log or import it when done</div></div><button class="btn sm" data-a="logCardio">Log</button></div>';
+    ad.forEach(p => { const i = F.addonNext(p); h += '<div class="card tight row"><div style="font-size:28px">' + p.icon + '</div><div class="grow"><b>' + esc(p.name) + '</b><div class="small muted">Next: session ' + (i + 1) + ' · ' + esc(p.sessions[i].t) + ' · ~' + p.min + ' min</div></div><button class="btn sm primary" data-a="startAddon" data-id="' + p.id + '" data-i="' + i + '">Start</button></div>'; });
+    if (ins) h += '<div class="card tight"><div class="row between"><b style="color:var(--' + ({ warm: 'warm', hot: 'hot' }[ins.tone] || 'text') + ')">' + esc(ins.title) + '</b><span class="tag">Body</span></div><div class="small muted" style="margin:4px 0 8px">' + esc(ins.text) + '</div>' + ins.actions.map(a => '<button class="btn sm" style="margin-right:6px" data-a="applyInsight" data-k="' + a.k + '">' + esc(a.label) + '</button>').join('') + '</div>';
+    return h + '</div>';
+  }
   function questsCard() {
     const qs = G.weekQuests(S());
     let h = '<div class="card"><div class="card-h"><h3>Weekly quests</h3><span class="tag gold">Resets Monday</span></div>';
@@ -119,6 +136,10 @@
   V.plan = () => {
     const st = S(); const p = st.profile; const plan = st.plan;
     let h = '<div class="page"><div class="row between"><div><div class="muted small">' + esc(E.GOALS[p.goal].label) + ' · ' + esc(E.SPLIT_LABEL[plan.split]) + '</div><h1>Your plan</h1></div><button class="icon-btn" data-a="planSettings">' + I.gear + '</button></div>';
+    const seg = F.UI.planSeg || 'weights';
+    h += '<div class="seg" style="max-width:460px">' + [['weights', 'Weights'], ['addons', 'Add-ons'], ['cardio', 'Cardio']].map(([k, l]) => '<button class="' + (seg === k ? 'on' : '') + '" data-a="planSeg" data-s="' + k + '">' + l + '</button>').join('') + '</div>';
+    if (seg === 'addons') return h + '<p class="small muted" style="margin:0">Short programs to stack on top of your plan — one session at a time, whenever you like.</p>' + V.addonsList() + '</div>';
+    if (seg === 'cardio') return h + V.cardioPanel() + '</div>';
     h += '<div class="grid two">';
     F.DOW_ORDER.forEach(dow => {
       const idx = plan.sched[dow];
@@ -149,12 +170,13 @@
   V.library = () => {
     const L = F.UI.lib; const st = S();
     const groups = ['chest', 'shoulders', 'triceps', 'biceps', 'lats', 'middle back', 'traps', 'forearms', 'abdominals', 'quadriceps', 'hamstrings', 'glutes', 'calves', 'lower back', 'adductors', 'abductors'];
-    let list = E.all().filter(e => (!L.m || e.pm.includes(L.m) || (L.sec && e.sm.includes(L.m))) && (!L.mine || E.hasEquip(e, st.profile.equipment)));
+    let list = E.all().filter(e => (L.cat ? e.cat === L.cat : (!e.cat || e.cat === 's')) && (!L.m || e.pm.includes(L.m) || (L.sec && e.sm.includes(L.m))) && (L.cat || !L.mine || E.hasEquip(e, st.profile.equipment)));
     if (L.q) { const q = L.q.toLowerCase(); list = list.filter(e => e.n.toLowerCase().includes(q) || e.eq.includes(q)); }
     list.sort((a, b) => b.t - a.t || a.n.localeCompare(b.n));
     let h = '<div class="page"><h1>Exercises</h1>';
     h += '<div class="row"><div class="grow" style="position:relative"><input class="input" style="padding-left:40px" placeholder="Search ' + E.all().length + ' exercises" value="' + esc(L.q) + '" data-in="libQ"><span style="position:absolute;left:12px;top:13px;width:20px;color:var(--dim)">' + I.search + '</span></div><button class="chip ' + (L.mine ? 'on' : '') + '" style="height:46px;border-radius:12px" data-a="libMine">My gear</button></div>';
     h += '<div class="chips"><button class="chip ' + (!L.m ? 'on' : '') + '" data-a="libM" data-m="">All</button>' + groups.map(m => '<button class="chip ' + (L.m === m ? 'on' : '') + '" data-a="libM" data-m="' + m + '">' + F.mLabel(m) + '</button>').join('') + '</div>';
+    h += '<div class="chips">' + [['', 'Strength'], ['st', 'Stretching'], ['p', 'Plyometric'], ['c', 'Cardio']].map(([k, l]) => '<button class="chip ' + ((L.cat || '') === k ? 'on' : '') + '" data-a="libCat" data-c="' + k + '">' + l + '</button>').join('') + '</div>';
     h += '<div class="small muted">' + list.length + ' results</div><div class="card tight" id="lib-list" style="padding-top:2px;padding-bottom:2px">';
     h += libRows(list.slice(0, 80));
     if (list.length > 80) h += '<button class="btn ghost block" style="margin:10px 0" data-a="libMore">Show all ' + list.length + '</button>';
@@ -168,6 +190,7 @@
   let libT = null;
   A.libQ = (d, el) => { F.UI.lib.q = el.value; clearTimeout(libT); libT = setTimeout(() => { F.render(); const i = document.querySelector('[data-in="libQ"]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 220); };
   A.libM = d => { F.UI.lib.m = d.m || null; F.render(); };
+  A.libCat = d => { F.UI.lib.cat = d.c || null; F.render(); };
   A.libMine = () => { F.UI.lib.mine = !F.UI.lib.mine; F.render(); };
   A.libMore = (d, el) => {
     const L = F.UI.lib; const st = S();
@@ -181,6 +204,10 @@
   V.progress = () => {
     const st = S(); const ss = st.sessions.slice().sort((a, b) => b.date - a.date);
     let h = '<div class="page"><h1>Progress</h1>';
+    const seg = F.UI.prog === 'body' || F.UI.prog === 'energy' ? F.UI.prog : 'overview';
+    h += '<div class="seg" style="max-width:460px">' + [['overview', 'Training'], ['body', 'Body'], ['energy', 'Calories']].map(([k, l]) => '<button class="' + (seg === k ? 'on' : '') + '" data-a="progSeg" data-s="' + k + '">' + l + '</button>').join('') + '</div>';
+    if (seg === 'body') return h + V.bodyPanel() + '</div>';
+    if (seg === 'energy') return h + V.energyPanel() + '</div>';
     if (!ss.length) return h + '<div class="card" style="text-align:center;padding:40px 20px"><div style="font-size:44px">📈</div><h2 style="margin:8px 0">No workouts yet</h2><p class="muted">Finish your first session and your charts, PRs and history will appear here.</p></div></div>';
     const wk = E.startOfWeek(Date.now()); const thisW = ss.filter(s => s.date >= wk);
     const vol = thisW.reduce((a, s) => a + E.sessionStats(s).vol, 0); const mins = thisW.reduce((a, s) => a + E.sessionStats(s).dur, 0);
@@ -196,11 +223,13 @@
     h += '<div class="card"><div class="card-h"><h3>History</h3><span class="small muted">' + ss.length + ' sessions</span></div>';
     ss.slice(0, 40).forEach(s => {
       const x = E.sessionStats(s);
-      h += '<button class="exrow" data-a="session" data-id="' + s.id + '"><div class="thumb" style="width:48px;height:48px;background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center"><span class="num" style="font-size:20px;line-height:1">' + new Date(s.date).getDate() + '</span><span class="tiny muted">' + new Date(s.date).toLocaleDateString(undefined, { month: 'short' }).toUpperCase() + '</span></div><div class="grow"><div class="nm">' + esc(s.title) + '</div><div class="sub">' + x.sets + ' sets · ' + F.fmtVol(x.vol) + ' ' + (s.u || F.u()) + ' · ' + x.dur + ' min' + (x.hrAvg ? ' · ♥ ' + x.hrAvg : '') + '</div></div>' + ((s.prs || []).length ? '<span class="tag gold">' + s.prs.length + ' PR</span>' : '') + '<span class="tag">+' + (s.xp || 0) + '</span></button>';
+      h += '<button class="exrow" data-a="session" data-id="' + s.id + '"><div class="thumb" style="width:48px;height:48px;background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center"><span class="num" style="font-size:20px;line-height:1">' + new Date(s.date).getDate() + '</span><span class="tiny muted">' + new Date(s.date).toLocaleDateString(undefined, { month: 'short' }).toUpperCase() + '</span></div><div class="grow"><div class="nm">' + esc(s.title) + '</div><div class="sub">' + x.sets + ' sets · ' + F.fmtVol(x.vol) + ' ' + (s.u || F.u()) + ' · ' + x.dur + ' min' + (x.hrAvg ? ' · ♥ ' + x.hrAvg : '') + '</div></div>' + ((s.prs || []).length ? '<span class="tag gold">' + s.prs.length + ' PR</span>' : '') + '<span class="tag">' + (s.energy ? s.energy.total + ' kcal' : '+' + (s.xp || 0)) + '</span></button>';
     });
     return h + '</div></div>';
   };
   A.session = d => F.push({ t: 'summary', id: d.id, past: true });
+  A.planSeg = d => { F.UI.planSeg = d.s; F.go('plan'); };
+  A.progSeg = d => { F.UI.prog = d.s; F.go('progress'); };
 
   F.barChart = (vals, labels) => {
     const W = 320, Hh = 150, pad = 22, max = Math.max(1, ...vals); const bw = (W - pad) / vals.length;
@@ -234,7 +263,7 @@
     // integrations
     const sv = I2.strava || {}; const w = I2.watch || {};
     h += '<div class="col" style="gap:var(--gap)"><div class="card"><div class="card-h"><h3>Connected</h3><button class="icon-btn sm" data-a="refreshInt">' + I.refresh + '</button></div><div class="list">';
-    h += intRow('💙', 'Samsung Health', st.settings.hcGranted ? 'Connected via Health Connect' : 'Sleep, heart rate, HRV, workouts', st.settings.hcGranted ? '<span class="tag fresh">On</span>' : '<button class="btn sm" data-a="connectHealth">Connect</button>');
+    h += intRow('💙', 'Samsung Health', st.settings.hcGranted ? 'Connected via Health Connect' : 'Sleep, heart rate, HRV, workouts', st.settings.hcGranted ? ((I2.hc && I2.hc.all === false) ? '<button class="btn sm" data-a="connectHealth">Grant new access</button>' : '<span class="tag fresh">On</span>') : '<button class="btn sm" data-a="connectHealth">Connect</button>');
     h += intRow('🧡', 'Strava', sv.connected ? 'Connected' + (sv.athlete ? ' as ' + esc(sv.athlete) : '') : sv.configured ? 'Ready to connect' : 'Needs your API app keys', sv.connected ? '<button class="btn sm ghost" data-a="stravaOff">Disconnect</button>' : '<button class="btn sm" data-a="stravaSetup">' + (sv.configured ? 'Connect' : 'Set up') + '</button>');
     h += intRow('⌚', 'Galaxy Watch', w.connected ? esc(w.name || 'Connected') : 'Install the Forge watch app', w.connected ? '<span class="tag fresh">Linked</span>' : '<span class="tag">Offline</span>');
     h += '</div></div>';
