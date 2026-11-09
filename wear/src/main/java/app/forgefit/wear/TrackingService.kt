@@ -44,8 +44,9 @@ class TrackingService : Service(), SensorEventListener, MessageClient.OnMessageR
         @Volatile var instance: TrackingService? = null
 
         fun start(ctx: Context) {
-            val i = Intent(ctx, TrackingService::class.java)
-            if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i) else ctx.startService(i)
+            // Started from the visible activity, so a plain start is allowed; the service promotes
+            // itself to foreground when the system permits (never crashes if it doesn't).
+            ctx.startService(Intent(ctx, TrackingService::class.java))
         }
         fun stop(ctx: Context) { ctx.stopService(Intent(ctx, TrackingService::class.java)) }
     }
@@ -74,7 +75,7 @@ class TrackingService : Service(), SensorEventListener, MessageClient.OnMessageR
         instance = this
         sm = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         startInForeground()
-        sm.getDefaultSensor(Sensor.TYPE_HEART_RATE)?.let { sm.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
+        try { sm.getDefaultSensor(Sensor.TYPE_HEART_RATE)?.let { sm.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) } } catch (e: SecurityException) { WatchState.fgError = "Heart-rate permission missing" }
         sm.getDefaultSensor(Sensor.TYPE_GRAVITY)?.let { sm.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
         sm.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)?.let { sm.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
         runCatching { messages.addListener(this) }
@@ -102,8 +103,14 @@ class TrackingService : Service(), SensorEventListener, MessageClient.OnMessageR
             .setOngoing(true)
             .setContentIntent(open)
             .build()
-        if (Build.VERSION.SDK_INT >= 29) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
-        else startForeground(1, n)
+        try {
+            if (Build.VERSION.SDK_INT >= 29) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
+            else startForeground(1, n)
+            WatchState.fgError = null
+        } catch (e: Exception) {
+            // Keep tracking while the app is open even if background tracking isn't permitted.
+            WatchState.fgError = e.javaClass.simpleName + ": " + (e.message ?: "")
+        }
     }
 
     // ---------- Phone link ----------
@@ -208,6 +215,7 @@ object WatchState {
     @Volatile var hr: Int = 0
     @Volatile var reps: Int = 0
     @Volatile var repsEdited: Boolean = false
+    @Volatile var fgError: String? = null
     var listener: (() -> Unit)? = null
     fun notifyChanged() { listener?.invoke() }
 }

@@ -41,7 +41,9 @@ class WatchActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        buildUi()
+        val crash = java.io.File(filesDir, "crash.txt")
+        if (crash.exists()) { showCrash(crash); return }
+        try { buildUi() } catch (e: Throwable) { showText("Startup error:\n" + e); return }
         val need = mutableListOf<String>()
         if (checkSelfPermission(Manifest.permission.BODY_SENSORS) != PackageManager.PERMISSION_GRANTED) need += Manifest.permission.BODY_SENSORS
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) need += Manifest.permission.POST_NOTIFICATIONS
@@ -50,6 +52,7 @@ class WatchActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (crashMode) return
         if (checkSelfPermission(Manifest.permission.BODY_SENSORS) == PackageManager.PERMISSION_GRANTED) startTracking()
         else { tvEx.text = "Allow body sensors to track heart rate"; }
     }
@@ -58,8 +61,28 @@ class WatchActivity : Activity() {
         try { TrackingService.start(this) } catch (e: Exception) { tvEx.text = "Couldn't start tracking: ${e.message}" }
     }
 
+    private var crashMode = false
+    private fun showText(t: String) {
+        crashMode = true
+        val tv = TextView(this).apply { text = t; textSize = 10f; setTextColor(TEXT); setPadding(dp(28), dp(36), dp(28), dp(40)) }
+        setContentView(android.widget.ScrollView(this).apply { setBackgroundColor(Color.BLACK); addView(tv) })
+    }
+    private fun showCrash(f: java.io.File) {
+        crashMode = true
+        val txt = runCatching { f.readText() }.getOrDefault("(unreadable)")
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(26), dp(30), dp(26), dp(40)) }
+        col.addView(label(13f, ORANGE, true).apply { text = "Forge crashed last time"; maxLines = 3 })
+        col.addView(label(10f, MUTED).apply { text = "Screenshot this and send it to Claude. Tap below to retry."; maxLines = 4 })
+        col.addView(pill("RETRY", ORANGE, Color.parseColor("#1A0B04")).apply {
+            setOnClickListener { f.delete(); recreate() }
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(44)).apply { topMargin = dp(8); bottomMargin = dp(8) })
+        col.addView(TextView(this).apply { text = txt.take(4000); textSize = 9f; setTextColor(TEXT) })
+        setContentView(android.widget.ScrollView(this).apply { setBackgroundColor(Color.BLACK); addView(col) })
+    }
+
     override fun onResume() {
         super.onResume()
+        if (crashMode) return
         WatchState.listener = { ui.post { render() } }
         ui.post(ticker)
         TrackingService.instance?.send(org.json.JSONObject().put("type", "hello"))
@@ -84,6 +107,7 @@ class WatchActivity : Activity() {
     }
 
     private fun render() {
+        if (crashMode) return
         val p = WatchState.phone
         val phase = p?.optString("phase") ?: "idle"
         tvHr.text = if (WatchState.hr > 0) "♥ ${WatchState.hr}" else "♥ --"
@@ -112,7 +136,7 @@ class WatchActivity : Activity() {
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 tvTop.text = "FORGE"
                 tvEx.text = "Start a workout on your phone"
-                tvTarget.text = "Heart rate & reps stream automatically"
+                tvTarget.text = WatchState.fgError?.let { "Note: $it" } ?: "Heart rate & reps stream automatically"
                 tvBig.text = if (WatchState.hr > 0) WatchState.hr.toString() else "--"; tvBigLbl.text = "BPM"
                 btnMinus.visibility = View.GONE; btnPlus.visibility = View.GONE
                 btnMain.text = "SYNC"
