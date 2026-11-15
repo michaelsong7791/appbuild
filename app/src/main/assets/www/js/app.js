@@ -11,7 +11,7 @@
 
   // ---------- State ----------
   const DEFAULT = () => ({
-    v: 3,
+    v: 4,
     profile: null,
     plan: null,
     sessions: [],
@@ -34,6 +34,8 @@
     if (S.plan) S.plan.days.forEach(d => d.items.forEach(it => { if (it.unit === 'sec' || it.finisher) return; const e = E.ex(it.exId); if (!e || e.f === 'stat') return; const sc = E.scheme(p.goal, p.experience, e.mech === 'c', p.preserve, p.repStyle); it.repMin = sc.repMin; it.repMax = sc.repMax; it.rest = sc.rest; }));
     S.v = 3; S.repUpgrade = true;
   }
+  // v4: 3 working sets as the standard (tuned per exercise at workout time)
+  if (S.profile && S.v < 4) { if (S.plan) S.plan.days.forEach(d => d.items.forEach(it => { if (it.unit !== 'sec' && !it.finisher) it.sets = 3; })); S.v = 4; }
   F.S = () => S;
   F.setState = ns => { S = Object.assign(DEFAULT(), ns); save(true); };
 
@@ -111,8 +113,23 @@
 
   // ---------- Event delegation ----------
   const A = F.actions = {};
+  // touch swipe between exercises (workout screen)
+  let sw = null;
+  document.addEventListener('touchstart', ev => { const z = ev.target.closest('[data-swipe]'); sw = z ? { x: ev.touches[0].clientX, y: ev.touches[0].clientY, k: z.dataset.swipe } : null; }, { passive: true });
+  document.addEventListener('touchend', ev => {
+    if (!sw) return; const t = ev.changedTouches[0]; const dx = t.clientX - sw.x, dy = t.clientY - sw.y;
+    if (Math.abs(dx) > 60 && Math.abs(dy) < 50 && sw.k === 'ex' && A.nextEx) { B.vibrate(10); A.nextEx({ dir: dx < 0 ? 1 : -1 }); }
+    sw = null;
+  }, { passive: true });
+  F.snack = (msg, label, fn) => {
+    document.querySelectorAll('.snack').forEach(x => x.remove());
+    const d = document.createElement('div'); d.className = 'snack'; d.innerHTML = '<span>' + esc(msg) + '</span>' + (label ? '<button>' + esc(label) + '</button>' : '');
+    if (label) d.querySelector('button').onclick = () => { d.remove(); fn(); };
+    document.body.appendChild(d); setTimeout(() => d.remove(), 4200);
+  };
   document.addEventListener('click', ev => {
     const el = ev.target.closest('[data-a]');
+    if (el && el.closest('.stepper, .mini-step, .rir, .seg, .chips, .daypick')) B.vibrate(8);
     if (!el) { if (ev.target.classList && ev.target.classList.contains('sheet-bg')) F.closeSheet(); return; }
     const fn = A[el.dataset.a];
     if (fn) { ev.preventDefault(); fn(el.dataset, el, ev); }

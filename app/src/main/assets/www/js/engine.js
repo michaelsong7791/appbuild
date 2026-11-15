@@ -190,10 +190,8 @@
     const rs = REP_STYLE[repStyle] || REP_STYLE.standard;
     lo = Math.max(3, lo + rs.lo); hi = Math.max(lo + 1, hi + rs.hi);
     if (preserve && isCompound) { lo = 5; hi = 8; rest = Math.max(rest, 150); }
-    let s = sets;
-    if (exp === 'beginner') s = Math.max(2, s - (isCompound ? 0 : 1));
-    if (exp === 'advanced' && isCompound) s += 1;
-    return { sets: s, repMin: lo, repMax: hi, rest };
+    // Standard is 3 working sets; per-exercise set counts are then tuned from history at workout time (Load.prescribeSets).
+    return { sets: 3, repMin: lo, repMax: hi, rest };
   }
 
   function itemMinutes(it) { const reps = it.unit === 'sec' ? it.repMax / 3.5 : (it.repMin + it.repMax) / 2; return (it.sets * (it.rest + 15 + reps * 3.5) + 75) / 60; }
@@ -212,7 +210,6 @@
       if (!c.length) return;
       const e = c[0].e; used.add(e.id);
       const sc = e.f === 'stat' ? { sets: 3, repMin: 30, repMax: 60, rest: 60 } : scheme(prof.goal, prof.experience, e.mech === 'c' && sl.pat !== 'iso', prof.preserve, prof.repStyle);
-      if (sl.focus || (prof.focus || []).includes(sl.m)) sc.sets += 1;
       items.push(Object.assign({ exId: e.id, m: sl.m, low: !!sl.low, slot: sl }, sc));
     });
     // Fit to session length: drop low-priority items first, then trim sets.
@@ -220,7 +217,7 @@
     const total = () => items.reduce((a, it) => a + itemMinutes(it), 0);
     while (total() > budget && items.some(i => i.low)) items.splice(items.map(i => i.low).lastIndexOf(true), 1);
     let guard = 30;
-    while (total() > budget && guard--) { const big = items.slice().sort((a, b) => b.sets - a.sets)[0]; if (big.sets <= 2) break; big.sets--; }
+    void guard;
     while (total() > budget && items.length > 3) items.pop();
     items.forEach(i => { delete i.slot; delete i.low; });
     if (prof.finisher) {
@@ -269,7 +266,7 @@
       const done = it.sets.filter(x => x.done);
       if (!done.length) return;
       const best = done.reduce((b, x) => Math.max(b, e1rm(x.w, x.r)), 0);
-      out.push({ date: s.date, sets: done, best, vol: done.reduce((a, x) => a + (x.w || 0) * (x.r || 0), 0) });
+      out.push({ date: s.date, sets: done, best, feel: it.feel || null, nSets: done.length, vol: done.reduce((a, x) => a + (x.w || 0) * (x.r || 0), 0) * implCount(ex(exId)) });
     }));
     return out.sort((a, b) => a.date - b.date);
   }
@@ -326,12 +323,15 @@
     return prs;
   }
 
+  /** 2 when an exercise uses a pair of dumbbells/kettlebells (logged weight is per hand), else 1. */
+  const SINGLE = /one-arm|one arm|single|goblet|swing|pullover|concentration|windmill|turkish|halo|figure 8|pass between|pirate|seated one|one-legged|one leg|lying one|bottoms-up|bottoms up|dumbbell squat to a bench|plie|spell caster|side bend|tricep extension -pronated|standing dumbbell triceps extension|seated triceps press|tate|around the worlds/i;
+  function implCount(e) { return e && (e.eq === 'dumbbell' || e.eq === 'kettlebell') && !SINGLE.test(e.n) ? 2 : 1; }
   function sessionStats(s) {
     let vol = 0, sets = 0, reps = 0; const mus = {};
     s.items.forEach(it => {
-      const e = ex(it.exId); const inv = e ? involvement(e) : {};
+      const e = ex(it.exId); const inv = e ? involvement(e) : {}; const k = implCount(e);
       it.sets.forEach(x => {
-        if (!x.done) return; sets++; reps += x.r || 0; vol += (x.w || 0) * (x.r || 0);
+        if (!x.done) return; sets++; reps += x.r || 0; vol += (x.w || 0) * (x.r || 0) * k;
         for (const m in inv) mus[m] = (mus[m] || 0) + inv[m];
       });
     });
@@ -375,7 +375,7 @@
     loadDb, ex, img, involvement, all: () => DB,
     readiness, muscleFatigue, setEffort, estRpeFromVloss,
     generatePlan, cardioDays, autoSplit, alternatives, candidates, scheme, itemMinutes, hasEquip,
-    exHistory, suggest, detectPRs, sessionStats, kcal, weeklyMuscleSets, e1rm, increment,
+    exHistory, implCount, suggest, detectPRs, sessionStats, kcal, weeklyMuscleSets, e1rm, increment,
     clamp, round, startOfWeek, startOfDay, isoWeek, toKg,
   };
 })();

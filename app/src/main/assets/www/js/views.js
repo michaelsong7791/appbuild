@@ -116,7 +116,7 @@
     const fat = F.fatigue(); const vals = {}; Object.keys(fat).forEach(m => { vals[m] = fat[m] / 100; });
     const fresh = E.MAJOR.filter(m => fat[m] < 20).length;
     const worst = E.MAJOR.slice().sort((a, b) => fat[b] - fat[a]).slice(0, 3).filter(m => fat[m] >= 25);
-    return '<div class="card"><div class="card-h"><h3>Muscle recovery</h3><span class="small muted">' + fresh + '/' + E.MAJOR.length + ' fresh</span></div>' + F.bodyPair(vals, 'fatigue') +
+    return '<div class="card"><div class="card-h"><h3>Muscle recovery</h3><span class="small muted">' + fresh + '/' + E.MAJOR.length + ' fresh</span></div>' + F.bodyPair(vals, 'fatigue').replace(/class="bm-m/g, 'data-a="muscleInfo" class="bm-m') + '<div class="tiny dim" style="text-align:center;margin-top:4px">Tap a muscle for details</div>' +
       '<div class="legend" style="margin-top:8px"><span><i style="background:var(--fresh)"></i>Fresh</span><span><i style="background:var(--warm)"></i>Recovering</span><span><i style="background:var(--hot)"></i>Fatigued</span></div>' +
       (worst.length ? '<div class="col" style="gap:6px;margin-top:12px">' + worst.map(m => '<div><div class="row between small"><span>' + F.mLabel(m) + '</span><span class="muted">' + (100 - fat[m]) + '% recovered</span></div><div class="bar fresh"><i style="width:' + (100 - fat[m]) + '%"></i></div></div>').join('') + '</div>' : '') + '</div>';
   }
@@ -137,6 +137,7 @@
     if (ins) h += '<div class="card tight"><div class="row between"><b style="color:var(--' + ({ warm: 'warm', hot: 'hot' }[ins.tone] || 'text') + ')">' + esc(ins.title) + '</b><span class="tag">Body</span></div><div class="small muted" style="margin:4px 0 8px">' + esc(ins.text) + '</div>' + ins.actions.map(a => '<button class="btn sm" style="margin-right:6px" data-a="applyInsight" data-k="' + a.k + '">' + esc(a.label) + '</button>').join('') + '</div>';
     return h + '</div>';
   }
+  A.muscleInfo = d => { if (d.m) F.sheet({ t: 'muscle', m: d.m }); };
   function questsCard() {
     const qs = G.weekQuests(S());
     let h = '<div class="card"><div class="card-h"><h3>Weekly quests</h3><span class="tag gold">Resets Monday</span></div>';

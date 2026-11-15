@@ -255,3 +255,39 @@ h1 { font-size: 30px; line-height: 1; } h2 { font-size: 21px; } h3 { font-size: 
 @keyframes toast { 0% { opacity: 0; transform: translate(-50%, 10px); } 10%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
 @keyframes spinPulse { 0%, 100% { transform: rotate(0) scale(1); } 50% { transform: rotate(45deg) scale(.85); border-radius: 50%; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; } }
+
+/* ---------- v1.4 workout UX ---------- */
+.rec { background: linear-gradient(150deg, color-mix(in oklab, var(--accent) 14%, var(--surface)), var(--surface) 70%); border: 1px solid color-mix(in oklab, var(--accent) 35%, var(--line)); border-radius: var(--r); padding: 12px 14px; }
+.rec-main { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 6px; margin: 4px 0 6px; }
+.rec-main .num { font-size: 30px; line-height: 1; }
+.rec-main .x { color: var(--muted); font-weight: 600; font-size: 14px; }
+.main-cta { flex-direction: column; gap: 0; line-height: 1.1; }
+.main-cta .sub { font-size: 12.5px; font-weight: 600; opacity: .75; letter-spacing: .02em; }
+.main-cta svg { display: none; }
+.rest { overflow-y: auto; justify-content: flex-start; padding: calc(24px + var(--safe-t)) 16px calc(24px + var(--safe-b)); }
+.rest-in { width: 100%; max-width: 440px; margin: auto; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.rest-ring { width: 210px; height: 210px; }
+.rest-ring .t b { font-size: 56px; }
+.rate-card { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+.rir { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.rir button { height: 44px; border-radius: 11px; background: var(--surface2); font-weight: 700; font-size: 13px; color: var(--text); transition: transform .1s, background .15s; }
+.rir button:active { transform: scale(.94); }
+.rir button.on { background: var(--accent); color: var(--accent-ink); }
+.rir button:first-child { font-size: 11px; line-height: 1.1; }
+.rir.feel { grid-template-columns: repeat(2, 1fr); }
+.rir.feel button { font-size: 13.5px; }
+.rir.feel button:first-child { font-size: 13.5px; }
+@media (min-width: 520px) { .rir.feel { grid-template-columns: repeat(4, 1fr); } }
+.next-up { max-width: none; width: 100%; }
+.mini-step { display: inline-flex; align-items: center; background: var(--surface2); border-radius: 10px; height: 34px; }
+.mini-step button { width: 30px; height: 100%; color: var(--muted); font-size: 18px; font-weight: 700; }
+.mini-step span { font-family: var(--display); font-weight: 700; font-size: 16px; padding: 0 4px; white-space: nowrap; }
+.link-btn { color: var(--accent-2); font-weight: 700; font-size: 12px; padding: 2px 0; }
+.snack { position: fixed; left: 50%; top: calc(14px + var(--safe-t)); transform: translateX(-50%); z-index: 92; display: flex; align-items: center; gap: 16px; background: #f2f0ea; color: #111; padding: 10px 10px 10px 16px; border-radius: 14px; font-weight: 600; box-shadow: 0 10px 40px rgba(0,0,0,.5); animation: toast 4.2s ease both; white-space: nowrap; }
+.snack button { color: var(--accent); font-weight: 800; padding: 6px 10px; border-radius: 9px; background: rgba(255,106,51,.12); }
+.wk-progress i { cursor: pointer; height: 6px; }
+.set { transition: background .2s, border-color .2s, transform .15s; }
+.set.cur { box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent); }
+.bodymap .bm-m { cursor: pointer; }
+.bodymap .bm-m:active { opacity: .7; }
+.btn:focus-visible, .icon-btn:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

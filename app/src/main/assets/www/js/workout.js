@@ -11,15 +11,16 @@
     const st = S(); const fat = F.fatigue();
     const items = day.items.map(it => {
       const sug = E.suggest(st.sessions, it, F.u(), st);
-      let sets = it.sets;
       const e = E.ex(it.exId);
+      const ps = window.Load && !opts.addon ? window.Load.prescribeSets(st, it, fat) : { sets: it.sets, why: [] };
+      let sets = ps.sets; const why = ps.why.slice();
       const pmF = e ? Math.max(...e.pm.map(m => fat[m] || 0)) : 0;
       let adapted = false;
-      if (opts.adapt && pmF >= 55 && sets > 2) { sets -= 1; adapted = true; }
+      if (opts.adapt && pmF >= 55 && sets > 2 && !why.some(x => x.includes('recovering'))) { sets -= 1; adapted = true; why.push('−1: adaptive mode'); }
       const lowReady = opts.adapt && F.readiness().score < 55;
       const w = sug.w != null && lowReady ? E.round(sug.w * 0.9, E.increment(e, F.u()) || 1) : sug.w;
       return {
-        exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, unit: it.unit, alias: it.alias, calib: !!sug.calib, basis: sug.basis || null, e1rm: sug.e1rm || null, note: it.unit === 'sec' ? (it.finisher ? 'Conditioning finisher — go hard for the full time.' : 'Timed hold — tap ✓ to start the countdown.') : sug.note + (adapted ? ' (1 set trimmed — muscle still recovering)' : ''),
+        exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, unit: it.unit, alias: it.alias, calib: !!sug.calib, basis: sug.basis || null, e1rm: sug.e1rm || null, rec: { w, r: sug.r, why }, note: it.unit === 'sec' ? (it.finisher ? 'Conditioning finisher — go hard for the full time.' : 'Timed hold — tap ✓ to start the countdown.') : sug.note,
         sets: Array.from({ length: sets }, () => ({ w: it.unit === 'sec' ? null : w, r: it.unit === 'sec' ? it.repMax : sug.r, done: false })),
       };
     });
@@ -73,7 +74,11 @@
   A.wIn = (d, el) => { const it = S().active.items[+d.i]; const v = parseFloat(el.value); it.sets[+d.j].w = isNaN(v) ? null : v; it.sets[+d.j].wEdited = true; it.sets.slice(+d.j + 1).forEach(x => { if (!x.done) { x.w = it.sets[+d.j].w; x.wEdited = true; } }); F.save(); };
   A.rIn = (d, el) => { const it = S().active.items[+d.i]; const v = parseInt(el.value, 10); it.sets[+d.j].r = isNaN(v) ? null : v; it.sets[+d.j].rEdited = true; F.save(); };
   A.rpe = d => { const it = S().active.items[+d.i]; const s = it.sets[+d.j]; s.rpe = s.rpe === +d.v ? null : +d.v; retune(it, +d.j); F.save(); F.render(); };
-  A.rir = d => { const it = S().active.items[+d.i]; const s = it.sets[+d.j]; s.rpe = 10 - (+d.v); s.calibrated = true; retune(it, +d.j); F.save(); F.render(); };
+  A.rir = d => { const it = S().active.items[+d.i]; const s = it.sets[+d.j]; s.rpe = 10 - (+d.v); s.calibrated = true; retune(it, +d.j); if (F.UI.sheet && F.UI.sheet.t === 'rateSet') F.UI.sheet = null; F.save(); F.render(); };
+  A.feel = d => { const it = S().active.items[+d.i]; it.feel = it.feel === d.k ? null : d.k; F.save(); F.render(); };
+  A.rateLater = d => F.sheet({ t: 'rateSet', i: +d.i, j: +d.j });
+  A.logSet = () => { const a = S().active; const it = a.items[a.cur]; const j = curSetIdx(it); if (j >= it.sets.length) return; A.toggleSet({ i: a.cur, j }); };
+  A.nextUndone = () => { const a = S().active; const nx = a.items.findIndex((x, k) => k > a.cur && x.sets.some(y => !y.done)); a.cur = nx >= 0 ? nx : a.items.findIndex(x => x.sets.some(y => !y.done)); if (a.cur < 0) a.cur = 0; F.save(); F.render(); F.syncWatch(); const b = document.querySelector('.wk-body'); if (b) b.scrollTop = 0; };
   function retune(it, j) {
     if (!window.Load) return;
     const msg = window.Load.autoregulate(S(), it, j);
@@ -122,6 +127,7 @@
     if (!moreHere && !lastOverall) { const nx = a.items.findIndex((x, k) => k > i && x.sets.some(y => !y.done)); a.cur = nx >= 0 ? nx : a.items.findIndex(x => x.sets.some(y => !y.done)); }
     if (!lastOverall) startRest(it.rest, { i, j }); else a.rest = null;
     F.save(true); F.render(); F.syncWatch();
+    if (!fromWatch) F.snack('Set ' + (j + 1) + ' logged', 'Undo', () => { const a2 = S().active; if (!a2) return; const s2 = a2.items[i].sets[j]; s2.done = false; delete s2.t; a2.rest = null; a2.cur = i; clearInterval(restTick); F.save(true); F.render(); F.syncWatch(); });
     if (lastOverall) setTimeout(() => F.sheet({ t: 'finish' }), 300);
   }
 
@@ -189,7 +195,7 @@
     B.call('watch.send', {
       phase: a.rest ? 'rest' : 'work', title: a.title,
       ex: e ? e.n : '', set: Math.min(j + 1, it ? it.sets.length : 1), sets: it ? it.sets.length : 0,
-      w: s ? s.w : null, r: s ? s.r : null, unit: a.u, restEnd: a.rest ? a.rest.until : 0,
+      w: s ? s.w : null, r: s ? s.r : null, unit: a.u + (e && E.implCount(e) === 2 ? ' ea' : ''), restEnd: a.rest ? a.rest.until : 0,
       nextEx: next && E.ex(next.exId) ? E.ex(next.exId).n : '', started: a.date,
       exIdx: a.cur + 1, exCount: a.items.length,
     }).catch(() => { });
@@ -227,7 +233,7 @@
     clearInterval(tick); clearInterval(restTick); B.keepAwake(false);
     a.end = Date.now(); a.rest = null;
     // keep only exercises with done sets
-    a.items = a.items.filter(it => it.sets.some(s => s.done)).map(it => ({ exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, unit: it.unit, alias: it.alias, sets: it.sets.filter(s => s.done).map(s => { const o = Object.assign({}, s); delete o.rEdited; return o; }) }));
+    a.items = a.items.filter(it => it.sets.some(s => s.done)).map(it => ({ exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, unit: it.unit, alias: it.alias, feel: it.feel || null, sets: it.sets.filter(s => s.done).map(s => { const o = Object.assign({}, s); delete o.rEdited; return o; }) }));
     const session = { id: a.id, date: a.date, end: a.end, title: a.title, dayIdx: a.dayIdx, planned: a.planned, addon: a.addon, u: a.u, items: a.items, hr: a.hr, hrSource: a.hr.length ? 'watch' : null, synced: {} };
     if (!session.items.length) { st.active = null; F.save(true); F.UI.stack = []; F.UI.sheet = null; F.render(); F.syncWatch(); F.toast('No sets logged — workout discarded'); return; }
     session.prs = E.detectPRs(st.sessions, session);

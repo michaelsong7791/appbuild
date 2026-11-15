@@ -62,8 +62,8 @@
     h += '<div class="card tight" style="padding-top:2px;padding-bottom:2px">';
     day.items.forEach((it, i) => {
       const e = E.ex(it.exId); if (!e) return;
-      const sug = E.suggest(st.sessions, it, F.u(), st);
-      h += '<div class="exrow" style="align-items:flex-start"><button data-a="ex" data-id="' + e.id + '">' + F.thumb(e.id) + '</button><div class="grow" style="padding-top:2px"><div class="nm">' + esc(e.n) + '</div><div class="sub">' + it.sets + ' × ' + it.repMin + (it.repMax !== it.repMin ? '–' + it.repMax : '') + (F.repUnit(it.exId) === 'sec' ? ' sec' : '') + ' · rest ' + it.rest + 's' + (sug.w ? ' · next ' + F.fmtW(sug.w) + ' ' + F.u() : '') + '</div><div class="row" style="gap:6px;margin-top:8px"><button class="icon-btn sm" data-a="editItem" data-d="' + top.idx + '" data-i="' + i + '">' + I.edit + '</button><button class="icon-btn sm" data-a="swapItem" data-d="' + top.idx + '" data-i="' + i + '">' + I.swap + '</button><button class="icon-btn sm" data-a="moveItem" data-d="' + top.idx + '" data-i="' + i + '" data-dir="-1">' + I.up + '</button><button class="icon-btn sm" data-a="moveItem" data-d="' + top.idx + '" data-i="' + i + '" data-dir="1">' + I.down + '</button><button class="icon-btn sm" data-a="delItem" data-d="' + top.idx + '" data-i="' + i + '" style="color:#ff8a8a">' + I.trash + '</button></div></div></div>';
+      const sug = E.suggest(st.sessions, it, F.u(), st); const psn = window.Load ? window.Load.prescribeSets(st, it, null) : { sets: it.sets, why: [] };
+      h += '<div class="exrow" style="align-items:flex-start"><button data-a="ex" data-id="' + e.id + '">' + F.thumb(e.id) + '</button><div class="grow" style="padding-top:2px"><div class="nm">' + esc(e.n) + '</div><div class="sub">' + it.repMin + (it.repMax !== it.repMin ? '–' + it.repMax : '') + (F.repUnit(it.exId) === 'sec' ? ' sec' : ' reps') + ' · rest ' + it.rest + 's</div>' + (F.repUnit(it.exId) !== 'sec' ? '<div class="small" style="margin-top:3px"><b style="color:var(--accent-2)">Next: ' + psn.sets + ' × ' + (sug.r || it.repMax) + (sug.w ? ' @ ' + F.fmtW(sug.w) + ' ' + F.u() + (E.implCount(e) === 2 ? ' each' : '') : '') + '</b>' + (psn.why.length && psn.why[0] !== 'same as last time' ? ' <span class="tiny muted">(' + esc(psn.why.join('; ')) + ')</span>' : '') + '</div>' : '') + '<div class="row" style="gap:6px;margin-top:8px"><button class="icon-btn sm" data-a="editItem" data-d="' + top.idx + '" data-i="' + i + '">' + I.edit + '</button><button class="icon-btn sm" data-a="swapItem" data-d="' + top.idx + '" data-i="' + i + '">' + I.swap + '</button><button class="icon-btn sm" data-a="moveItem" data-d="' + top.idx + '" data-i="' + i + '" data-dir="-1">' + I.up + '</button><button class="icon-btn sm" data-a="moveItem" data-d="' + top.idx + '" data-i="' + i + '" data-dir="1">' + I.down + '</button><button class="icon-btn sm" data-a="delItem" data-d="' + top.idx + '" data-i="' + i + '" style="color:#ff8a8a">' + I.trash + '</button></div></div></div>';
     });
     h += '</div><button class="btn ghost block" data-a="pickAdd" data-d="' + top.idx + '">' + I.plus + 'Add exercise</button></div>';
     const dsub = F.itemsSub(day.items);
@@ -82,42 +82,86 @@
   function workoutScreen() {
     const st = S(); const a = st.active; if (!a) return '';
     const it = a.items[a.cur]; const e = E.ex(it.exId); const j = F.curSetIdx(it); const unit = F.repUnit(it.exId, it); const hold = F.hold();
+    const pair = E.implCount(e) === 2; const wu = a.u + (pair ? ' each' : '');
+    const allDone = a.items.every(x => x.sets.every(s => s.done)); const exDone = j >= it.sets.length;
     let h = '<div class="screen" style="animation:none">';
-    h += '<div class="wk-top"><button class="icon-btn" data-a="minimize">' + I.down + '</button><div class="grow"><div class="tiny muted" style="letter-spacing:.1em;font-weight:700">' + esc(a.title.toUpperCase()) + '</div><div class="wk-clock" id="wk-clock">' + F.clock(Date.now() - a.date) + '</div></div><div class="hrpill off" id="wk-hr">' + I.heart + '<span class="v">--</span></div><button class="icon-btn" data-a="wkList">' + I.list + '</button></div>';
-    h += '<div class="wk-progress">' + a.items.map((x, k) => '<i class="' + (x.sets.every(s => s.done) ? 'done' : k === a.cur ? 'cur' : '') + '"></i>').join('') + '</div>';
-    h += '<div class="wk-body" data-scroll="wk"><div class="wk-layout"><div class="demo-col col" style="gap:12px">' + F.demo(e.id) + '<div><div class="row between"><div class="tiny muted" style="font-weight:700;letter-spacing:.1em">EXERCISE ' + (a.cur + 1) + ' OF ' + a.items.length + '</div><button class="small" style="color:var(--accent-2);font-weight:700" data-a="ex" data-id="' + e.id + '">How to ›</button></div><h2 style="font-size:26px;margin-top:2px">' + esc(it.alias || e.n) + '</h2>' + (it.alias ? '<div class="small muted">' + esc(e.n) + '</div>' : '') + '<div class="target" style="margin-top:6px"><span class="tag accent">' + it.sets.length + ' × ' + it.repMin + (it.repMax !== it.repMin ? '–' + it.repMax : '') + ' ' + unit + '</span><span class="tag">Rest ' + it.rest + 's</span>' + ((it.basis === 'history' && it.e1rm) || it.e1rmLive ? '<span class="tag gold">est. 1RM ' + (it.e1rmLive || it.e1rm) + '</span>' : '') + '</div><div class="small muted" style="margin-top:6px">💪 ' + esc(F.topSubs(e, 4)) + '</div>' + (it.note ? '<div class="small muted" style="margin-top:8px">💡 ' + esc(it.note) + '</div>' : '') + '</div>';
-    if (unit !== 'sec') h += '<div class="watchbox">' + I.watch.replace('<svg', '<svg width="22" height="22" style="color:var(--accent-2)"') + '<div class="grow">Watch reps <b id="wk-reps">' + (a.watch.reps || 0) + '</b><div class="tiny muted">Auto-counted from wrist motion · tap ✓ on the watch to log</div></div></div>';
-    h += '</div>';
-    h += '<div class="col" style="gap:10px"><div class="sets">';
+    h += '<div class="wk-top"><button class="icon-btn" data-a="minimize" aria-label="Minimise">' + I.down + '</button><div class="grow"><div class="tiny muted" style="letter-spacing:.1em;font-weight:700">' + esc(a.title.toUpperCase()) + '</div><div class="wk-clock" id="wk-clock">' + F.clock(Date.now() - a.date) + '</div></div><div class="hrpill off" id="wk-hr">' + I.heart + '<span class="v">--</span></div><button class="icon-btn" data-a="wkList" aria-label="Exercises">' + I.list + '</button></div>';
+    h += '<div class="wk-progress">' + a.items.map((x, k) => '<i data-a="curEx" data-i="' + k + '" class="' + (x.sets.every(s => s.done) ? 'done' : k === a.cur ? 'cur' : '') + '"></i>').join('') + '</div>';
+    h += '<div class="wk-body" data-scroll="wk"><div class="wk-layout"><div class="demo-col col" style="gap:12px" data-swipe="ex">' + F.demo(e.id, '<span class="badge tag" style="background:rgba(0,0,0,.55);color:#fff">' + (a.cur + 1) + ' / ' + a.items.length + ' · swipe ‹ ›</span>') +
+      '<div><div class="row between"><h2 style="font-size:26px;margin-top:2px" class="grow">' + esc(it.alias || e.n) + '</h2><button class="btn sm ghost" data-a="ex" data-id="' + e.id + '">How to</button></div>' + (it.alias ? '<div class="small muted">' + esc(e.n) + '</div>' : '') +
+      '<div class="small muted" style="margin-top:4px">💪 ' + esc(F.topSubs(e, 4)) + '</div></div>';
+    // recommendation card
+    if (unit !== 'sec' && it.rec) {
+      h += '<div class="rec"><div class="row between"><span class="tiny" style="font-weight:800;letter-spacing:.12em;color:var(--accent-2)">TODAY’S TARGET</span>' + ((it.basis === 'history' && it.e1rm) || it.e1rmLive ? '<span class="tag gold">est. 1RM ' + (it.e1rmLive || it.e1rm) + '</span>' : it.calib ? '<span class="tag gold">🎯 calibrating</span>' : '') + '</div>' +
+        '<div class="rec-main"><span class="num">' + it.sets.length + '</span><span class="x">sets ×</span><span class="num">' + it.repMin + (it.repMax !== it.repMin ? '–' + it.repMax : '') + '</span><span class="x">reps</span>' + (it.rec.w != null ? '<span class="x">@</span><span class="num">' + F.fmtW(it.rec.w) + '</span><span class="x">' + wu + '</span>' : '') + '</div>' +
+        '<div class="small muted">' + esc(it.note || '') + '</div>' + (it.rec.why && it.rec.why.length ? '<div class="tiny muted" style="margin-top:4px">' + it.sets.length + ' sets: ' + esc(it.rec.why.join(' · ')) + '</div>' : '') + '</div>';
+    } else if (it.note) h += '<div class="small muted">💡 ' + esc(it.note) + '</div>';
+    if (unit !== 'sec') h += '<div class="watchbox">' + I.watch.replace('<svg', '<svg width="22" height="22" style="color:var(--accent-2)"') + '<div class="grow">Watch reps <b id="wk-reps">' + (a.watch.reps || 0) + '</b><div class="tiny muted">Counted from wrist motion — or tap ✓ DONE on the watch</div></div></div>';
+    h += '</div><div class="col" style="gap:10px"><div class="sets">';
     it.sets.forEach((s, k) => {
-      const isCur = k === j; const u = a.u; const holding = hold && hold.i === a.cur && hold.j === k;
-      h += '<div class="set' + (s.done ? ' done' : isCur ? ' cur' : '') + '"><div class="idx">' + (k + 1) + '</div>' +
-        (unit === 'sec' ? '<div class="stepper" style="justify-content:center">' + (holding ? '<span class="num" id="hold-t" style="font-size:24px;color:var(--accent-2)">' + Math.max(0, Math.ceil(hold.secs - (Date.now() - hold.start) / 1000)) + 's</span>' : '<span class="small muted">' + (s.done ? 'held' : 'timed hold') + '</span>') + '</div>' : '<div class="stepper"><button data-a="wStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="-1">−</button><div class="vc"><input type="number" inputmode="decimal" value="' + (s.w == null ? '' : s.w) + '" placeholder="–" data-ch="wIn" data-i="' + a.cur + '" data-j="' + k + '"><span class="u">' + u + '</span></div><button data-a="wStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="1">+</button></div>') +
-        '<div class="stepper"><button data-a="rStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="-1">−</button><div class="vc"><input type="number" inputmode="numeric" value="' + (s.r == null ? '' : s.r) + '" data-rin="' + a.cur + '-' + k + '" data-ch="rIn" data-i="' + a.cur + '" data-j="' + k + '"><span class="u">' + unit + '</span></div><button data-a="rStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="1">+</button></div>' +
-        '<button class="check" data-a="toggleSet" data-i="' + a.cur + '" data-j="' + k + '"' + (holding ? ' style="background:var(--gold);color:#221"' : '') + '>' + (unit === 'sec' && !s.done && !holding ? I.timer : I.check) + '</button>';
-      if (s.done) {
-        const meta = [];
-        if (s.hrAvg) meta.push('♥ avg ' + s.hrAvg + (s.hrMax ? ' · peak ' + s.hrMax : ''));
-        if (s.hrr != null) meta.push('HR recovery −' + s.hrr + ' bpm/60s');
-        if (s.tempo && s.tempo.length) meta.push('tempo ' + (s.tempo.reduce((x, y) => x + y, 0) / s.tempo.length / 1000).toFixed(1) + 's/rep');
-        if (s.vloss != null) meta.push('speed drop ' + Math.round(s.vloss * 100) + '%' + (s.vloss > 0.3 ? ' — near failure' : ''));
-        if (meta.length) h += '<div class="meta">' + meta.map(esc).join('<span class="dim">·</span>') + '</div>';
-        if (it.calib && k === 0 && !s.calibrated && s.w > 0) h += '<div class="rpe" style="flex-wrap:wrap"><div class="small" style="width:100%;margin:2px 0 6px;color:var(--gold);font-weight:600">🎯 Calibrate: how many more reps could you have done?</div>' + [[0, '0'], [1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5+']].map(([v, l]) => '<button data-a="rir" data-i="' + a.cur + '" data-j="' + k + '" data-v="' + v + '">' + l + '</button>').join('') + '</div>';
-        else if (st.settings.rpePrompt && (k === j - 1 || (j === it.sets.length && k === it.sets.length - 1) || s.rpe)) h += '<div class="rpe"><span class="tiny muted" style="align-self:center;width:34px;text-align:center">RPE</span>' + [6, 7, 8, 9, 10].map(v => '<button class="' + (s.rpe === v ? 'on' : '') + '" data-a="rpe" data-i="' + a.cur + '" data-j="' + k + '" data-v="' + v + '">' + v + '</button>').join('') + '</div>';
-      }
+      const isCur = k === j; const holding = hold && hold.i === a.cur && hold.j === k;
+      h += '<div class="set' + (s.done ? ' done' : isCur ? ' cur' : '') + '"><div class="idx">' + (s.done ? '✓' : k + 1) + '</div>' +
+        (unit === 'sec' ? '<div class="stepper" style="justify-content:center">' + (holding ? '<span class="num" id="hold-t" style="font-size:24px;color:var(--accent-2)">' + Math.max(0, Math.ceil(hold.secs - (Date.now() - hold.start) / 1000)) + 's</span>' : '<span class="small muted">' + (s.done ? 'held ' + s.r + 's' : 'timed hold') + '</span>') + '</div>' : '<div class="stepper"><button data-a="wStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="-1" aria-label="Less weight">−</button><div class="vc"><input type="number" inputmode="decimal" value="' + (s.w == null ? '' : s.w) + '" placeholder="–" data-ch="wIn" data-i="' + a.cur + '" data-j="' + k + '"><span class="u">' + wu + '</span></div><button data-a="wStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="1" aria-label="More weight">+</button></div>') +
+        '<div class="stepper"><button data-a="rStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="-1" aria-label="Fewer">−</button><div class="vc"><input type="number" inputmode="numeric" value="' + (s.r == null ? '' : s.r) + '" data-rin="' + a.cur + '-' + k + '" data-ch="rIn" data-i="' + a.cur + '" data-j="' + k + '"><span class="u">' + unit + '</span></div><button data-a="rStep" data-i="' + a.cur + '" data-j="' + k + '" data-dir="1" aria-label="More">+</button></div>' +
+        '<button class="check" data-a="toggleSet" data-i="' + a.cur + '" data-j="' + k + '"' + (holding ? ' style="background:var(--gold);color:#221"' : '') + ' aria-label="' + (s.done ? 'Undo set' : 'Log set') + '">' + (unit === 'sec' && !s.done && !holding ? I.timer : I.check) + '</button>';
+      const meta = [];
+      if (s.done && s.rpe) meta.push(F.rirLabel(10 - s.rpe));
+      if (s.hrAvg) meta.push('♥ ' + s.hrAvg + (s.hrMax ? '/' + s.hrMax : ''));
+      if (s.hrr != null) meta.push('HR −' + s.hrr + ' in 60s');
+      if (s.tempo && s.tempo.length) meta.push((s.tempo.reduce((x, y) => x + y, 0) / s.tempo.length / 1000).toFixed(1) + ' s/rep');
+      if (s.vloss != null) meta.push('speed −' + Math.round(s.vloss * 100) + '%');
+      if (isCur && unit !== 'sec' && s.w > 0 && (e.eq === 'barbell' || e.eq === 'ezbar') && !e.req.includes('smith')) meta.push('🏋 ' + F.plates(s.w, e.eq, a.u));
+      if (meta.length) h += '<div class="meta">' + meta.map(esc).join('<span class="dim">·</span>') + '</div>';
+      if (s.done && !s.rpe && !s.calibrated) h += '<div class="meta"><button class="link-btn" data-a="rateLater" data-i="' + a.cur + '" data-j="' + k + '">+ rate effort</button></div>';
       h += '</div>';
     });
-    h += '</div><div class="row"><button class="btn sm ghost" data-a="addSet">' + I.plus + 'Set</button><button class="btn sm ghost" data-a="delSet">' + I.minus + 'Set</button><button class="btn sm ghost" data-a="wkSwap">' + I.swap + 'Swap</button><button class="btn sm ghost" data-a="wkAdd">' + I.plus + 'Exercise</button></div>';
-    h += '<div class="tiny dim">RPE = effort (10 = no reps left). It sharpens your recovery map and next-session weights.</div></div></div></div>';
-    h += '<div class="wk-foot"><button class="icon-btn" style="height:56px;width:56px;border-radius:16px" data-a="nextEx" data-dir="-1">' + I.back + '</button><button class="btn primary lg grow" data-a="finishAsk">Finish workout</button><button class="icon-btn" style="height:56px;width:56px;border-radius:16px" data-a="nextEx" data-dir="1">' + I.chev + '</button></div>';
-    if (a.rest) {
-      const left = a.rest.until - Date.now(); const C = 2 * Math.PI * 108; const nx = a.items[a.cur]; const ne = E.ex(nx.exId); const nj = F.curSetIdx(nx); const ns = nx.sets[Math.min(nj, nx.sets.length - 1)];
-      h += '<div class="rest"><div class="tiny" style="letter-spacing:.2em;font-weight:700;color:var(--muted)">REST</div><div class="rest-ring"><svg width="240" height="240"><circle cx="120" cy="120" r="108" fill="none" stroke="var(--surface3)" stroke-width="10"/><circle id="rest-ring" cx="120" cy="120" r="108" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + (C * (1 - Math.max(0, left) / (a.rest.total * 1000))) + '"/></svg><div class="t"><b id="rest-t">' + F.clock(left) + '</b><span class="small muted">of ' + F.clock(a.rest.total * 1000) + '</span></div></div>' +
-        '<div class="row"><button class="btn" data-a="addRest" data-s="-15">−15s</button><button class="btn primary" data-a="skipRest">' + I.skip + 'Skip</button><button class="btn" data-a="addRest" data-s="30">+30s</button></div>' +
-        '<div class="next-up">' + F.thumb(ne.id) + '<div class="grow"><div class="tiny muted" style="font-weight:700;letter-spacing:.1em">UP NEXT · SET ' + (nj + 1) + '</div><div style="font-weight:600" class="ellipsis">' + esc(ne.n) + '</div><div class="small muted">' + (ns && ns.w != null ? F.fmtW(ns.w) + ' ' + a.u + ' × ' : '') + (ns ? ns.r : '') + ' reps</div></div></div></div>';
-    }
+    h += '</div><div class="row wrap" style="gap:8px"><button class="btn sm ghost" data-a="addSet">' + I.plus + 'Set</button><button class="btn sm ghost" data-a="delSet">' + I.minus + 'Set</button><button class="btn sm ghost" data-a="wkSwap">' + I.swap + 'Swap</button><button class="btn sm ghost" data-a="wkAdd">' + I.plus + 'Exercise</button></div>';
+    if (exDone) h += F.exFeelCard(a.cur);
+    h += '</div></div></div>';
+    // primary action
+    let main, act;
+    if (allDone) { main = I.check + 'Finish workout'; act = 'finishAsk'; }
+    else if (exDone) { main = 'Next exercise ' + I.chev; act = 'nextUndone'; }
+    else if (unit === 'sec') { const hl = hold && hold.i === a.cur; main = hl ? '■ Stop hold' : '▶ Start ' + (it.sets[j].r || it.repMax) + 's hold'; act = 'logSet'; }
+    else { const s = it.sets[j]; main = I.check + 'Log set ' + (j + 1) + '/' + it.sets.length + '<span class="sub">' + (s.w != null && s.w !== '' ? F.fmtW(s.w) + ' ' + wu + ' × ' : '') + (s.r || it.repMax) + '</span>'; act = 'logSet'; }
+    h += '<div class="wk-foot"><button class="icon-btn" style="height:56px;width:56px;border-radius:16px" data-a="nextEx" data-dir="-1" aria-label="Previous exercise">' + I.back + '</button><button class="btn primary lg grow main-cta" data-a="' + act + '">' + main + '</button><button class="icon-btn" style="height:56px;width:56px;border-radius:16px" data-a="nextEx" data-dir="1" aria-label="Next exercise">' + I.chev + '</button></div>';
+    if (a.rest) h += restOverlay(a);
     return h + '</div>';
   }
+
+  function restOverlay(a) {
+    const left = a.rest.until - Date.now(); const C = 2 * Math.PI * 96;
+    const f = a.rest.from || {}; const pit = a.items[f.i]; const ps = pit && pit.sets[f.j]; const pe = pit && E.ex(pit.exId);
+    const nx = a.items[a.cur]; const ne = E.ex(nx.exId); const nj = Math.min(F.curSetIdx(nx), nx.sets.length - 1); const ns = nx.sets[nj];
+    const pair = E.implCount(ne) === 2; const nunit = F.repUnit(nx.exId, nx);
+    let h = '<div class="rest"><div class="rest-in">';
+    h += '<div class="row" style="justify-content:center;gap:18px;align-items:center"><button class="btn" data-a="addRest" data-s="-15">−15s</button><div class="rest-ring"><svg width="210" height="210"><circle cx="105" cy="105" r="96" fill="none" stroke="var(--surface3)" stroke-width="9"/><circle id="rest-ring" cx="105" cy="105" r="96" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + (C * (1 - Math.max(0, left) / (a.rest.total * 1000))) + '" style="transform:rotate(-90deg);transform-origin:center"/></svg><div class="t"><span class="tiny muted" style="letter-spacing:.2em;font-weight:700">REST</span><b id="rest-t">' + F.clock(left) + '</b></div></div><button class="btn" data-a="addRest" data-s="30">+30s</button></div>';
+    // rate the set just done
+    if (ps && pe && F.repUnit(pit.exId, pit) !== 'sec' && pe.eq !== 'stretch') {
+      const calib = pit.calib && f.j === 0 && !ps.calibrated; const cur = ps.rpe ? 10 - ps.rpe : null;
+      h += '<div class="rate-card"><div class="small" style="font-weight:700">' + (calib ? '🎯 Calibrate — ' : '') + 'How many more reps could you have done?</div><div class="tiny muted" style="margin:2px 0 8px">Set ' + (f.j + 1) + ' · ' + esc(pe.n) + ' · ' + (ps.w ? F.fmtW(ps.w) + ' × ' : '') + ps.r + (calib ? ' — sets the weight for the rest' : '') + '</div><div class="rir">' + [[0, 'Failed / 0'], [1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5+']].map(([v, l]) => '<button class="' + (cur === v ? 'on' : '') + '" data-a="rir" data-i="' + f.i + '" data-j="' + f.j + '" data-v="' + v + '">' + l + '</button>').join('') + '</div></div>';
+      if (pit.sets.every(x => x.done)) h += F.exFeelCard(f.i, true);
+    }
+    // next set, adjustable
+    h += '<div class="next-up">' + F.thumb(ne.id) + '<div class="grow"><div class="tiny muted" style="font-weight:700;letter-spacing:.1em">UP NEXT · ' + (nx === pit ? 'SET ' + (nj + 1) : 'NEW EXERCISE') + '</div><div style="font-weight:600" class="ellipsis">' + esc(nx.alias || ne.n) + '</div>' +
+      (nunit === 'sec' ? '<div class="small muted">' + ns.r + 's hold</div>' : '<div class="row" style="gap:6px;margin-top:6px">' + (ns.w != null ? '<div class="mini-step"><button data-a="wStep" data-i="' + a.cur + '" data-j="' + nj + '" data-dir="-1">−</button><span>' + F.fmtW(ns.w) + ' ' + a.u + (pair ? ' ea' : '') + '</span><button data-a="wStep" data-i="' + a.cur + '" data-j="' + nj + '" data-dir="1">+</button></div>' : '') + '<div class="mini-step"><button data-a="rStep" data-i="' + a.cur + '" data-j="' + nj + '" data-dir="-1">−</button><span>' + ns.r + ' reps</span><button data-a="rStep" data-i="' + a.cur + '" data-j="' + nj + '" data-dir="1">+</button></div></div>') + '</div></div>';
+    h += '<button class="btn primary lg block" style="max-width:380px" data-a="skipRest">' + I.skip + 'Start next set</button>';
+    return h + '</div></div>';
+  }
+
+  F.rirLabel = r => r <= 0 ? 'to failure' : r >= 5 ? '5+ left' : r + ' left';
+  F.exFeelCard = (i, compact) => {
+    const it = S().active.items[i]; const e = E.ex(it.exId);
+    return '<div class="rate-card"' + (compact ? '' : ' style="margin-top:4px"') + '><div class="small" style="font-weight:700">How was ' + esc(it.alias || e.n) + ' overall?</div><div class="tiny muted" style="margin:2px 0 8px">Tunes next time’s sets & weight</div><div class="rir feel">' + [['easy', '😌 Too easy'], ['right', '👌 Just right'], ['hard', '😤 Tough'], ['max', '🥵 Too much']].map(([k, l]) => '<button class="' + (it.feel === k ? 'on' : '') + '" data-a="feel" data-i="' + i + '" data-k="' + k + '">' + l + '</button>').join('') + '</div></div>';
+  };
+  F.plates = (w, eq, u) => {
+    const bar = eq === 'ezbar' ? (u === 'lb' ? 20 : 10) : (u === 'lb' ? 45 : 20);
+    let side = (w - bar) / 2; if (side < 0) return 'below empty bar (' + bar + ')';
+    if (side === 0) return 'empty bar';
+    const P = u === 'lb' ? [45, 35, 25, 10, 5, 2.5] : [25, 20, 15, 10, 5, 2.5, 1.25]; const out = [];
+    P.forEach(p => { while (side >= p - 1e-6) { out.push(p); side -= p; } });
+    return 'each side: ' + out.join(' + ') + (side > 0.01 ? ' (+' + Math.round(side * 100) / 100 + ')' : '') + ' · bar ' + bar;
+  };
 
   // ---------- Summary ----------
   function summaryScreen(top) {
@@ -221,9 +265,15 @@
       const a = st.active;
       return '<h2 style="margin-bottom:8px">Exercises</h2>' + a.items.map((it, i) => { const e = E.ex(it.exId); const d = it.sets.filter(s => s.done).length; return '<button class="exrow" data-a="curEx" data-i="' + i + '">' + F.thumb(it.exId) + '<div class="grow"><div class="nm" style="' + (i === a.cur ? 'color:var(--accent-2)' : '') + '">' + esc(e.n) + '</div><div class="sub">' + d + ' / ' + it.sets.length + ' sets</div></div>' + (d === it.sets.length ? '<span class="tag fresh">Done</span>' : '') + '</button>'; }).join('') + '<button class="btn danger block" style="margin-top:14px" data-a="discard">Discard workout</button>';
     }
+    if (sh.t === 'rateSet') {
+      const it = st.active.items[sh.i]; const s = it.sets[sh.j]; const cur = s.rpe ? 10 - s.rpe : null;
+      return '<h2>Rate set ' + (sh.j + 1) + '</h2><div class="small muted" style="margin:4px 0 12px">' + esc(E.ex(it.exId).n) + ' · ' + (s.w ? F.fmtW(s.w) + ' × ' : '') + s.r + '</div><div class="small" style="font-weight:700;margin-bottom:8px">How many more reps could you have done?</div><div class="rir">' + [[0, 'Failed / 0'], [1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5+']].map(([v, l]) => '<button class="' + (cur === v ? 'on' : '') + '" data-a="rir" data-i="' + sh.i + '" data-j="' + sh.j + '" data-v="' + v + '">' + l + '</button>').join('') + '</div>';
+    }
     if (sh.t === 'finish') {
       const a = st.active; const done = a.items.reduce((x, it) => x + it.sets.filter(s => s.done).length, 0); const tot = a.items.reduce((x, it) => x + it.sets.length, 0);
-      return '<h2>Finish workout?</h2><p class="muted">' + done + ' of ' + tot + ' sets logged' + (done < tot ? ' — unlogged sets won’t be saved.' : '. Every set done. 🔥') + '</p>' + (st.settings.hcGranted && st.settings.autoHc ? '<div class="small muted" style="margin-bottom:6px">💙 Will save to Samsung Health</div>' : '') + (st.settings.autoStrava && (F.UI.integrations.strava || {}).connected ? '<div class="small muted" style="margin-bottom:6px">🧡 Will upload to Strava</div>' : '') + '<div class="row" style="margin-top:12px"><button class="btn ghost grow" data-a="closeSheet">Keep going</button><button class="btn primary grow" data-a="finish">Finish &amp; save</button></div>';
+      const li = a.items.map((x, k) => ({ x, k })).filter(o => o.x.sets.some(s => s.done)).pop(); let rate = '';
+      if (li) { const lj = li.x.sets.map(s => s.done).lastIndexOf(true); const ls = li.x.sets[lj]; if (F.repUnit(li.x.exId, li.x) !== 'sec') rate = '<div class="rate-card" style="margin:10px 0"><div class="small" style="font-weight:700">Last set — how many more reps could you have done?</div><div class="rir" style="margin-top:8px">' + [[0, '0'], [1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5+']].map(([v, l]) => '<button class="' + (ls.rpe && 10 - ls.rpe === v ? 'on' : '') + '" data-a="rir" data-i="' + li.k + '" data-j="' + lj + '" data-v="' + v + '">' + l + '</button>').join('') + '</div></div>' + F.exFeelCard(li.k, true); }
+      return '<h2>Finish workout?</h2>' + rate + '<p class="muted">' + done + ' of ' + tot + ' sets logged' + (done < tot ? ' — unlogged sets won’t be saved.' : '. Every set done. 🔥') + '</p>' + (st.settings.hcGranted && st.settings.autoHc ? '<div class="small muted" style="margin-bottom:6px">💙 Will save to Samsung Health</div>' : '') + (st.settings.autoStrava && (F.UI.integrations.strava || {}).connected ? '<div class="small muted" style="margin-bottom:6px">🧡 Will upload to Strava</div>' : '') + '<div class="row" style="margin-top:12px"><button class="btn ghost grow" data-a="closeSheet">Keep going</button><button class="btn primary grow" data-a="finish">Finish &amp; save</button></div>';
     }
     if (sh.t === 'strava') {
       return '<h2>Connect Strava</h2><p class="small muted">Strava requires every app to use its own free API keys. One-time setup (≈2 min):</p><ol class="steps small"><li>Open <b>strava.com/settings/api</b> and create an app (any name, e.g. “Forge”).</li><li>Set <b>Authorization Callback Domain</b> to <b>localhost</b>.</li><li>Copy the <b>Client ID</b> and <b>Client Secret</b> below.</li></ol><button class="btn sm ghost" style="margin-bottom:12px" data-a="openStravaApi">Open strava.com/settings/api</button><div class="col"><div class="field"><label>Client ID</label><input class="input" id="sv-id" inputmode="numeric" placeholder="e.g. 123456"></div><div class="field"><label>Client Secret</label><input class="input" id="sv-secret" placeholder="40-character secret"></div></div><button class="btn primary block" style="margin-top:14px" data-a="stravaSave">Save &amp; connect</button><p class="tiny dim" style="margin-top:10px">Keys are stored only on this phone.</p>';
@@ -295,7 +345,7 @@
     ['obBw', 'obAge', 'obH'].forEach(k => { const el = document.querySelector('[data-ch="' + k + '"]'); if (el) A[k]({}, el); });
     UI.obBuilding = true; F.render();
     setTimeout(() => {
-      const st = S(); p.perWeek = p.perWeek || p.days.length; st.profile = p; st.plan = E.generatePlan(p); st.v = 3; UI.obDraft = null; UI.obBuilding = false; UI.ob = 0; F.save(true);
+      const st = S(); p.perWeek = p.perWeek || p.days.length; st.profile = p; st.plan = E.generatePlan(p); st.v = 4; UI.obDraft = null; UI.obBuilding = false; UI.ob = 0; F.save(true);
       F.render(); F.toast('Your plan is ready 🔥');
     }, 1300);
   };

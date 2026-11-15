@@ -286,6 +286,28 @@
   };
   A.clearAdj = () => { const p = S().profile; p.finisher = false; p.preserve = false; p.cardioTarget = 0; F.regenerate(true); F.toast('Plan adjustments cleared'); F.render(); };
 
+  // ---------- Muscle detail sheet (tap on the recovery map) ----------
+  F.sheets.muscle = sh => {
+    const st = S(); const m = sh.m; const fat = F.fatigue(); const rec = 100 - (fat[m] || 0);
+    let eta = null;
+    if (rec < 90) for (let hh = 3; hh <= 120; hh += 3) { const f = E.muscleFatigue(st.sessions, Date.now() + hh * 36e5, st.health, st.cardio, st.profile)[m] || 0; if (100 - f >= 90) { eta = hh; break; } }
+    const since = Date.now() - 7 * 864e5; const hits = [];
+    st.sessions.filter(s => s.date >= since).forEach(s => s.items.forEach(it => { const e = E.ex(it.exId); if (!e) return; const inv = E.involvement(e)[m]; const n = it.sets.filter(x => x.done).length; if (inv && n) hits.push({ t: s.date, name: e.n, sets: n, eff: n * inv }); }));
+    st.cardio.filter(c => c.start >= since).forEach(c => { const v = N.cardioMuscleSets(c, st.profile)[m]; if (v > 0.2) hits.push({ t: c.start, name: N.CARDIO[c.type].label + ' · ' + c.min + ' min', sets: null, eff: v }); });
+    hits.sort((a, b) => b.t - a.t);
+    const wk = hits.reduce((a, x) => a + x.eff, 0); const g = (E.GOALS[st.profile.goal] || E.GOALS.general).weekly;
+    const subs = Object.keys(window.Muscles.SUB).filter(k => window.Muscles.SUB[k][1] === m).map(k => window.Muscles.SUB[k][0]);
+    const col = rec >= 85 ? 'var(--fresh)' : rec >= 60 ? 'var(--warm)' : 'var(--hot)';
+    const sugg = E.candidates({ m, pat: 'iso', kw: [] }, st.profile, new Set(), { rand: () => 0.5 }).slice(0, 4).map(c => c.e);
+    let h = '<div class="row between"><h2>' + esc(F.mLabel(m)) + '</h2><span class="num" style="font-size:30px;color:' + col + '">' + rec + '%</span></div>';
+    h += '<div class="small muted">' + (subs.length ? 'Includes: ' + esc(subs.join(', ')) + '. ' : '') + (rec >= 90 ? 'Fully recovered — ready for hard training.' : 'Recovered enough for heavy work ' + (eta ? 'in about ' + (eta < 24 ? eta + ' h' : Math.round(eta / 24 * 10) / 10 + ' days') : 'in 4+ days') + '.') + '</div>';
+    h += '<div class="bar fresh" style="margin:10px 0 14px;height:8px"><i style="width:' + rec + '%;background:' + col + '"></i></div>';
+    h += '<div class="stats" style="grid-template-columns:1fr 1fr"><div class="stat"><div class="num">' + (Math.round(wk * 10) / 10) + '</div><div class="lbl">Hard sets, 7 days</div></div><div class="stat"><div class="num">' + g[0] + '–' + g[1] + '</div><div class="lbl">Weekly target</div></div></div>';
+    h += '<div class="tiny muted" style="margin:14px 0 4px;font-weight:700;letter-spacing:.08em">TRAINED RECENTLY</div>' + (hits.length ? hits.slice(0, 6).map(x => '<div class="li small"><span class="muted" style="width:84px">' + F.fmtDate(x.t) + '</span><span class="grow">' + esc(x.name) + '</span><span class="muted">' + (x.sets ? x.sets + ' sets' : 'cardio') + '</span></div>').join('') : '<div class="small muted">Nothing in the last 7 days.</div>');
+    h += '<div class="tiny muted" style="margin:14px 0 4px;font-weight:700;letter-spacing:.08em">GOOD EXERCISES FOR IT</div>' + sugg.map(e => '<button class="exrow" data-a="ex" data-id="' + e.id + '">' + F.thumb(e.id) + '<div class="grow"><div class="nm ellipsis">' + esc(e.n) + '</div><div class="sub ellipsis">' + esc(F.topSubs(e, 2)) + '</div></div></button>').join('');
+    return h;
+  };
+
   // =====================================================================
   // ENERGY (calories)
   // =====================================================================

@@ -191,5 +191,45 @@
     return (it.calib && j === 0 ? 'Calibrated' : 'Adjusted') + ': set' + (first === lastK ? ' ' + first : 's ' + first + '–' + lastK) + ' → ' + w + ' ' + units + ' × ' + reps;
   }
 
-  window.Load = { prescribe, autoregulate, e1rm, weightFor, ownE1rm, standard, rirOf };
+  /** Realistic weekly sets for a muscle: each plan exercise at the set count you last actually did. */
+  function plannedWeekly(st, m) {
+    const plan = st.plan; if (!plan || !plan.days.length) return null;
+    const per = (st.profile.perWeek || (st.profile.days || []).length || 3) / plan.days.length; let tot = 0;
+    plan.days.forEach(d => d.items.forEach(it => {
+      const e = E().ex(it.exId); if (!e) return; const inv = E().involvement(e)[m] || 0; if (!inv) return;
+      const h = E().exHistory(st.sessions, e.id); const n = h.length ? h[h.length - 1].nSets : (it.sets || 3);
+      tot += n * inv * per;
+    }));
+    return tot;
+  }
+
+  /** Working sets for today: standard 3 for a new exercise, then tuned from that exercise's latest history
+      (how it felt, rep drop-off, plateaus, realistic weekly volume for the muscle, current recovery). Max ±1 per session. */
+  function prescribeSets(st, item, fat) {
+    const base = item.sets || 3; const e = E().ex(item.exId);
+    if (!e || item.unit === 'sec' || item.finisher || e.cat === 'st') return { sets: base, why: [] };
+    const h = E().exHistory(st.sessions, e.id); const why = [];
+    if (!h.length) return { sets: 3, why: ['standard 3 sets for a new exercise'] };
+    const last = h[h.length - 1]; const lastN = clamp(last.nSets || base, 2, 5); let n = lastN;
+    const lbl = (E().MUSCLES[e.pm[0]] || { label: e.pm[0] }).label;
+    if (last.feel === 'easy') { n = lastN + 1; why.push('+1: felt easy last time'); }
+    else if (last.feel === 'max') { n = lastN - 1; why.push('−1: felt like too much last time'); }
+    else {
+      const sameW = last.sets.filter(x => x.w === last.sets[0].w);
+      if (sameW.length >= 3 && sameW[sameW.length - 1].r < sameW[0].r * 0.7) { n = lastN - 1; why.push('−1: reps dropped off sharply last time'); }
+    }
+    if (n === lastN) {
+      const own = ownE1rm(st.sessions, e.id);
+      const g = E().GOALS[st.profile.goal] || E().GOALS.general; const pw = plannedWeekly(st, e.pm[0]);
+      if (own && own.slope != null && own.slope <= 0.005 && own.n >= 5 && lastN < base + 2) { n = lastN + 1; why.push('+1: progress has stalled — adding volume'); }
+      else if (pw != null && pw < g.weekly[0] - 1 && lastN < base + 1) { n = lastN + 1; why.push('+1: ' + lbl + ' weekly volume below target (' + Math.round(pw) + '/' + g.weekly[0] + ' sets)'); }
+      else if (pw != null && pw > g.weekly[1] + 4 && lastN > base - 1) { n = lastN - 1; why.push('−1: ' + lbl + ' weekly volume already high'); }
+    }
+    if (fat && Math.max(...e.pm.map(x => fat[x] || 0)) >= 60 && n > 2) { n--; why.push('−1: ' + lbl + ' still recovering'); }
+    n = clamp(n, Math.max(2, lastN - 1), Math.min(5, lastN + 1));
+    if (!why.length) why.push('same as last time');
+    return { sets: n, why };
+  }
+
+  window.Load = { prescribe, prescribeSets, plannedWeekly, autoregulate, e1rm, weightFor, ownE1rm, standard, rirOf };
 })();

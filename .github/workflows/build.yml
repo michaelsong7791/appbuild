@@ -26,24 +26,28 @@ jobs:
           chmod +x gradlew
           ./gradlew :app:assembleRelease :wear:assembleRelease --stacktrace
 
-      - name: Collect APKs
+      - name: Collect APKs (named by version)
         run: |
+          PV=$(grep -m1 'versionName' app/build.gradle.kts | sed -E 's/.*"(.*)".*/\1/')
+          WV=$(grep -m1 'versionName' wear/build.gradle.kts | sed -E 's/.*"(.*)".*/\1/')
+          echo "PV=$PV" >> $GITHUB_ENV; echo "WV=$WV" >> $GITHUB_ENV
           mkdir -p out
-          cp app/build/outputs/apk/release/app-release.apk out/Forge-phone.apk
-          cp wear/build/outputs/apk/release/wear-release.apk out/Forge-watch.apk
+          cp app/build/outputs/apk/release/app-release.apk "out/Forge-phone-v$PV.apk"
+          cp wear/build/outputs/apk/release/wear-release.apk "out/Forge-watch-v$WV.apk"
           ls -la out
 
       - uses: actions/upload-artifact@v4
         with:
-          name: forge-apks
+          name: forge-apks-v${{ env.PV }}
           path: out/*.apk
 
-      - name: Publish to "latest" release (direct download link for your phone)
+      - name: Publish release v${{ env.PV }} (+ "latest")
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          gh release delete "v$PV" --yes --cleanup-tag || true
+          gh release create "v$PV" out/*.apk --title "Forge v$PV" \
+            --notes "Phone: Forge-phone-v$PV.apk (Galaxy Z Fold7). Watch: Forge-watch-v$WV.apk (Galaxy Watch, see README). Build ${GITHUB_SHA::7}."
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest out/Forge-phone.apk out/Forge-watch.apk \
-            --title "Forge build ${GITHUB_SHA::7}" \
-            --notes "Install Forge-phone.apk on the Galaxy Z Fold7. Forge-watch.apk goes on the Galaxy Watch (see README)." \
-            --latest
+          gh release create latest out/*.apk --title "Forge latest (v$PV)" \
+            --notes "Latest build — same files as v$PV." --latest
