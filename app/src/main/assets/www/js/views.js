@@ -29,7 +29,23 @@
     const L = G.levelOf(S().game.xp);
     return '<button class="lvl-ring" data-a="tab" data-tab="profile">' + F.ring(L.pct, 62, 5, 'url(#lg)') + '<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="lg"><stop offset="0" stop-color="#ff6a33"/><stop offset="1" stop-color="#ffc94a"/></linearGradient></defs></svg><div class="n"><b>' + L.level + '</b><span>LEVEL</span></div></button>';
   }
-  F.bodyPair = (vals, mode, cls) => '<div class="bm-wrap ' + (cls || '') + '">' + BodyMap.svg('front', vals, { mode }) + BodyMap.svg('back', vals, { mode }) + '</div>';
+  F.bodyPair = (vals, mode, cls, valsBack) => '<div class="bm-wrap ' + (cls || '') + '">' + BodyMap.svg('front', vals, { mode }) + BodyMap.svg('back', valsBack || vals, { mode }) + '</div>';
+  /** Body map from detailed sub-muscle weights (front view shows front/side delts, back view rear delts etc.). */
+  F.detailMap = (sub, cls) => { const v = window.Muscles.mapValues(sub); return F.bodyPair(v.front, 'target', cls, v.back); };
+  F.exSub = e => window.Muscles.subMap(window.Muscles.detail(e));
+  F.itemsSub = (items, doneOnly) => { const o = {}; items.forEach(it => { const e = E.ex(it.exId); if (!e) return; const n = doneOnly ? it.sets.filter(s => s.done).length : (typeof it.sets === 'number' ? it.sets : it.sets.length); window.Muscles.detail(e).forEach(x => { o[x.k] = (o[x.k] || 0) + x.pct * n; }); }); return o; };
+  F.topSubs = (e, n) => window.Muscles.detail(e).slice(0, n || 3).map(x => x.label + ' ' + x.pct + '%').join(' · ');
+  /** Grouped breakdown: muscle group → individual muscles/heads with % share and role. */
+  F.muscleBreakdown = (list, opts) => {
+    opts = opts || {}; const groups = {};
+    list.forEach(x => { (groups[x.group] = groups[x.group] || []).push(x); });
+    const order = Object.keys(groups).sort((a, b) => groups[b].reduce((s, x) => s + x.pct, 0) - groups[a].reduce((s, x) => s + x.pct, 0));
+    const mx = Math.max(...list.map(x => x.pct), 1);
+    return order.map(g => { const tot = groups[g].reduce((s, x) => s + x.pct, 0);
+      return '<div style="margin:10px 0 2px"><div class="row between"><b style="font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">' + esc(F.mLabel(g)) + '</b><span class="small muted">' + Math.round(tot) + '%</span></div>' +
+        groups[g].map(x => '<div class="inv" style="grid-template-columns:minmax(118px,40%) 1fr 76px" title="' + esc(x.info || '') + '"><span class="small">' + esc(x.label) + '</span><div class="bar"><i style="width:' + (x.pct / mx * 100) + '%;' + (x.pct < 6 ? 'opacity:.55' : '') + '"></i></div><span class="small" style="text-align:right"><b>' + Math.round(x.pct) + '%</b>' + (opts.noRole ? '' : ' <span class="tiny muted">' + window.Muscles.role(x.pct).slice(0, 3) + '</span>') + '</span></div>').join('') + '</div>'; }).join('');
+  };
+  F.subList = sub => { const tot = Object.values(sub).reduce((a, b) => a + b, 0) || 1; const S2 = window.Muscles.SUB; return Object.keys(sub).filter(k => S2[k]).map(k => ({ k, label: S2[k][0], group: S2[k][1], info: S2[k][2], pct: sub[k] / tot * 100 })).sort((a, b) => b.pct - a.pct); };
   F.musclesTxt = vals => Object.entries(vals).filter(([m, v]) => v >= 0.5 && E.MAJOR.includes(m)).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([m]) => F.mLabel(m)).join(' · ');
 
   // ---------- TODAY ----------
@@ -53,9 +69,10 @@
     }
     const idx = F.todayIdx(); const done = F.doneToday();
     if (idx == null || done) {
-      const td = new Date().getDay(); const nextDow = [1, 2, 3, 4, 5, 6, 7].map(o => (td + o) % 7).find(d => st.plan.sched[d] != null);
-      const nd = nextDow != null ? st.plan.days[st.plan.sched[nextDow]] : null;
-      return '<div class="card hero"><div class="hero-in"><div class="grow"><div class="kicker">' + (done ? 'Done for today' : 'Rest day') + '</div><h1>' + (done ? 'Nice work.' : 'Recover &amp; grow') + '</h1><div class="muted small">' + (nd ? 'Next up: <b style="color:var(--text)">' + esc(nd.title) + '</b> on ' + F.DOW[nextDow] : 'No sessions scheduled.') + '</div><div class="row" style="margin-top:14px"><button class="btn ghost" data-a="startOther">' + I.bolt + 'Train anyway</button></div></div></div></div>';
+      const td = new Date().getDay(); const sc = F.sched(); let nextDow, nd, why = '';
+      if (sc) { const n = sc.next; if (n) { nextDow = n.dow; nd = st.plan.days[n.idx]; why = n.reason; } if (!done && sc.today && sc.today.reason) why = 'Today: ' + sc.today.reason + (why ? ' · Next: ' + why : ''); }
+      else { nextDow = [1, 2, 3, 4, 5, 6, 7].map(o => (td + o) % 7).find(d => st.plan.sched[d] != null); nd = nextDow != null ? st.plan.days[st.plan.sched[nextDow]] : null; }
+      return '<div class="card hero"><div class="hero-in"><div class="grow"><div class="kicker">' + (done ? 'Done for today' : 'Rest day') + '</div><h1>' + (done ? 'Nice work.' : 'Recover &amp; grow') + '</h1><div class="muted small">' + (nd ? 'Next up: <b style="color:var(--text)">' + esc(nd.title) + '</b> ' + (sc && sc.next && sc.next.k === 1 ? 'tomorrow' : 'on ' + F.DOW[nextDow]) : 'No sessions scheduled.') + '</div>' + (why ? '<div class="tiny muted" style="margin-top:6px">🧠 ' + esc(why) + '</div>' : '') + '<div class="row" style="margin-top:14px"><button class="btn ghost" data-a="startOther">' + I.bolt + 'Train anyway</button></div></div></div></div>';
     }
     const day = st.plan.days[idx]; const vals = F.dayMuscles(day); const fat = F.fatigue();
     const tired = Object.keys(vals).filter(m => vals[m] >= 0.5 && fat[m] >= 55);
@@ -64,7 +81,7 @@
     if (tired.length || rd.score < 55) warn = '<div class="card flat tight" style="margin-top:12px;background:color-mix(in oklab,var(--warm) 10%,var(--surface2))"><div class="small"><b style="color:var(--warm)">Heads up:</b> ' + (tired.length ? esc(tired.map(F.mLabel).join(', ')) + ' still recovering' : '') + (tired.length && rd.score < 55 ? ' and ' : '') + (rd.score < 55 ? 'readiness is low (' + rd.score + ')' : '') + '. Adaptive mode trims a set on tired muscles' + (rd.score < 55 ? ' and backs weights off 10%' : '') + '.</div><button class="btn sm" style="margin-top:8px" data-a="start" data-idx="' + idx + '" data-adapt="1">' + I.bolt + 'Start adapted</button></div>';
     return '<div class="card hero"><div class="hero-in"><div class="grow"><div class="kicker">Today · ' + F.DOW[new Date().getDay()] + '</div><h1>' + esc(day.title) + '</h1>' +
       '<div class="muted small">' + day.items.length + ' exercises · ~' + F.dayMinutes(day) + ' min · ' + day.items.reduce((a, i) => a + i.sets, 0) + ' sets</div>' +
-      '<div class="small" style="margin-top:6px;color:#d8cfc6">' + esc(F.musclesTxt(vals)) + '</div>' +
+      '<div class="small" style="margin-top:6px;color:#d8cfc6">' + esc(F.musclesTxt(vals)) + '</div>' + (F.sched() && F.sched().today.reason ? '<div class="tiny muted" style="margin-top:4px">🧠 Picked for today: ' + esc(F.sched().today.reason) + '</div>' : '') +
       '<div class="row" style="margin-top:14px"><button class="btn primary lg grow" data-a="start" data-idx="' + idx + '">' + I.play + 'Start workout</button><button class="icon-btn" style="height:56px;width:56px;border-radius:16px" data-a="openDay" data-idx="' + idx + '">' + I.list + '</button></div>' + warn +
       '</div><div class="bm-mini">' + BodyMap.svg('front', vals, { mode: 'target' }) + BodyMap.svg('back', vals, { mode: 'target' }) + '</div></div></div>';
   }
@@ -72,10 +89,11 @@
   function weekStrip() {
     const st = S(); const sow = E.startOfWeek(Date.now());
     const done = new Set(st.sessions.map(s => E.startOfDay(s.date)));
-    let h = '<div class="card tight"><div class="card-h" style="margin-bottom:8px"><h3>This week</h3><span class="small muted">' + G.weekStreak(st).thisWeek + ' / ' + st.profile.days.length + ' sessions</span></div><div class="weekstrip">';
+    const sc = F.sched(); const plannedT = sc ? new Set(sc.days.filter(d => d.kind === 'lift').map(d => d.t)) : null;
+    let h = '<div class="card tight"><div class="card-h" style="margin-bottom:8px"><h3>This week</h3><span class="small muted">' + G.weekStreak(st).thisWeek + ' / ' + F.perWeek() + ' sessions</span></div><div class="weekstrip">';
     for (let i = 0; i < 7; i++) {
       const t = sow + i * E.DAY; const d = new Date(t); const dow = d.getDay();
-      const planned = st.plan.sched[dow] != null; const isDone = done.has(t); const today = E.startOfDay(Date.now()) === t;
+      const planned = plannedT ? plannedT.has(t) : st.plan.sched[dow] != null; const isDone = done.has(t); const today = E.startOfDay(Date.now()) === t;
       h += '<div class="wd' + (planned ? ' plan' : '') + (isDone ? ' done' : '') + (today ? ' today' : '') + '">' + F.DOW[dow].slice(0, 1) + '<div class="dot">' + (isDone ? '✓' : d.getDate()) + '</div></div>';
     }
     return h + '</div></div>';
@@ -111,7 +129,7 @@
     const st = S(); let h = '';
     const ad = (window.ADDONS || []).filter(p => { const pr = st.addons[p.id]; return pr && pr.done.length && F.addonNext(p) >= 0; });
     const ins = window.Energy.insights(st).list.filter(x => x.actions && x.actions.length)[0];
-    const cdToday = (st.plan.cardioDays || []).includes(new Date().getDay()) && !st.cardio.some(c => c.start >= E.startOfDay(Date.now()));
+    const cdToday = F.cardioDows().includes(new Date().getDay()) && !st.cardio.some(c => c.start >= E.startOfDay(Date.now()));
     if (!ad.length && !ins && !cdToday) return '';
     h += '<div class="grid two">';
     if (cdToday) h += '<div class="card tight row"><div style="font-size:28px">🏃</div><div class="grow"><b>Cardio day</b><div class="small muted">' + (st.profile.goal === 'fatloss' ? '30–45 min, moderate' : '25–40 min easy (zone 2)') + ' — log or import it when done</div></div><button class="btn sm" data-a="logCardio">Log</button></div>';
@@ -140,8 +158,9 @@
     h += '<div class="seg" style="max-width:460px">' + [['weights', 'Weights'], ['addons', 'Add-ons'], ['cardio', 'Cardio']].map(([k, l]) => '<button class="' + (seg === k ? 'on' : '') + '" data-a="planSeg" data-s="' + k + '">' + l + '</button>').join('') + '</div>';
     if (seg === 'addons') return h + '<p class="small muted" style="margin:0">Short programs to stack on top of your plan — one session at a time, whenever you like.</p>' + V.addonsList() + '</div>';
     if (seg === 'cardio') return h + V.cardioPanel() + '</div>';
-    h += '<div class="grid two">';
-    F.DOW_ORDER.forEach(dow => {
+    if (F.smart()) h += smartPlanList();
+    else h += '<div class="grid two">';
+    if (!F.smart()) F.DOW_ORDER.forEach(dow => {
       const idx = plan.sched[dow];
       if (idx == null) { h += '<div class="card flat tight row" style="opacity:.6"><div class="num" style="width:44px;font-size:18px;color:var(--dim)">' + F.DOW[dow].toUpperCase() + '</div><div class="muted">Rest</div></div>'; return; }
       const day = plan.days[idx]; const vals = F.dayMuscles(day);
@@ -163,6 +182,23 @@
     h += '<div class="row wrap"><button class="btn" data-a="regen">' + I.refresh + 'Shuffle exercises</button><button class="btn ghost" data-a="planSettings">' + I.gear + 'Goals &amp; schedule</button></div>';
     return h + '</div>';
   };
+  function smartPlanList() {
+    const st = S(); const sc = F.sched(); const plan = st.plan;
+    let h = '<div class="card"><div class="card-h"><h3>Next 7 days</h3><span class="tag accent">Smart schedule</span></div><div class="list">';
+    sc.days.forEach(d => {
+      const lbl = d.k === 0 ? 'TODAY' : d.k === 1 ? 'TMRW' : F.DOW[d.dow].toUpperCase();
+      const date = new Date(d.t).getDate();
+      if (d.kind === 'lift') {
+        const day = plan.days[d.idx];
+        h += '<button class="li li-btn" data-a="openDay" data-idx="' + d.idx + '"><div style="width:52px"><div class="num" style="font-size:17px;color:var(--accent-2)">' + lbl + '</div><div class="tiny muted">' + date + '</div></div><div class="grow"><b>' + esc(day.title) + '</b>' + (d.cardio ? ' <span class="tag">+ cardio</span>' : '') + '<div class="small muted">' + esc(d.reason) + '</div><div class="bar fresh" style="margin-top:6px;height:4px"><i style="width:' + d.recovery + '%"></i></div></div><span class="num" style="font-size:18px;color:' + (d.forced ? 'var(--warm)' : 'var(--fresh)') + '">' + d.recovery + '%</span></button>';
+      } else {
+        h += '<div class="li" style="opacity:' + (d.kind === 'done' ? 1 : .7) + '"><div style="width:52px"><div class="num" style="font-size:17px;color:var(--dim)">' + lbl + '</div><div class="tiny muted">' + date + '</div></div><div class="grow"><b style="color:var(--muted)">' + (d.kind === 'done' ? '✓ Done' : d.cardio ? '🏃 Cardio day' : 'Rest') + '</b><div class="small muted">' + esc(d.reason || '') + (d.cardio && d.kind !== 'done' ? ' · suggested ' + ({ run: 'run', cycle: 'ride', swim: 'swim', row: 'row' }[d.cardioType] || 'cardio') : '') + '</div></div></div>';
+      }
+    });
+    h += '</div><div class="tiny dim" style="margin-top:8px">Re-planned automatically after every workout, run, ride or sync — based on projected recovery of each muscle from all your training, sleep and HRV. Sessions per week: ' + sc.perWeek + ' from your ' + st.profile.days.length + ' available days.</div></div>';
+    h += '<div class="card"><div class="card-h"><h3>Workouts in rotation</h3></div>' + plan.days.map((day, i) => { const vals = F.dayMuscles(day); return '<button class="exrow" data-a="openDay" data-idx="' + i + '"><div class="grow"><div class="nm">' + esc(day.title) + '</div><div class="sub ellipsis">' + day.items.length + ' exercises · ~' + F.dayMinutes(day) + ' min · ' + esc(F.musclesTxt(vals)) + '</div></div>' + I.chev.replace('<svg', '<svg width="18" height="18" style="color:var(--dim)"') + '</button>'; }).join('') + '</div>';
+    return h + '<div class="grid two" style="display:none">';
+  }
   A.planSettings = () => F.push({ t: 'planSettings' });
   A.regen = () => { if (!confirm('Pick a fresh set of exercises for every day? Your schedule and goals stay the same.')) return; F.regenerate(false); F.toast('New exercise selection generated'); F.render(); };
 
@@ -184,7 +220,7 @@
   };
   function libRows(list) {
     const fav = new Set(S().profile.favorites || []);
-    return list.map(e => '<button class="exrow" data-a="ex" data-id="' + e.id + '"><img class="thumb" loading="lazy" src="' + E.img(e.id, 0) + '" alt=""><div class="grow"><div class="nm ellipsis">' + (fav.has(e.id) ? '<span style="color:var(--accent)">♥ </span>' : '') + esc(e.n) + '</div><div class="sub ellipsis">' + esc(e.pm.map(F.mLabel).join(', ')) + (e.sm.length ? ' <span class="dim">+ ' + esc(e.sm.slice(0, 2).map(F.mLabel).join(', ')) + '</span>' : '') + '</div></div><span class="tag">' + esc(E.EQUIPMENT[e.eq]) + '</span></button>').join('');
+    return list.map(e => '<button class="exrow" data-a="ex" data-id="' + e.id + '"><img class="thumb" loading="lazy" src="' + E.img(e.id, 0) + '" alt=""><div class="grow"><div class="nm ellipsis">' + (fav.has(e.id) ? '<span style="color:var(--accent)">♥ </span>' : '') + esc(e.n) + '</div><div class="sub ellipsis">' + esc(F.topSubs(e, 3)) + '</div></div><span class="tag">' + esc(E.EQUIPMENT[e.eq]) + '</span></button>').join('');
   }
   F.libRows = libRows;
   let libT = null;

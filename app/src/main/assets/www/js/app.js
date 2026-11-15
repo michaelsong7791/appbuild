@@ -11,7 +11,7 @@
 
   // ---------- State ----------
   const DEFAULT = () => ({
-    v: 1,
+    v: 3,
     profile: null,
     plan: null,
     sessions: [],
@@ -28,6 +28,12 @@
   S.game = Object.assign(DEFAULT().game, S.game || {});
   S.settings = Object.assign(DEFAULT().settings, S.settings || {});
   ['cardio', 'body'].forEach(k => { if (!Array.isArray(S[k])) S[k] = []; }); if (!S.addons) S.addons = {};
+  // v3: higher default rep ranges, rep style, smart scheduling
+  if (S.profile && (S.v || 1) < 3) {
+    const p = S.profile; p.repStyle = p.repStyle || 'standard'; if (p.smartSched == null) p.smartSched = true; if (!p.perWeek) p.perWeek = (p.days || []).length;
+    if (S.plan) S.plan.days.forEach(d => d.items.forEach(it => { if (it.unit === 'sec' || it.finisher) return; const e = E.ex(it.exId); if (!e || e.f === 'stat') return; const sc = E.scheme(p.goal, p.experience, e.mech === 'c', p.preserve, p.repStyle); it.repMin = sc.repMin; it.repMax = sc.repMax; it.rest = sc.rest; }));
+    S.v = 3; S.repUpgrade = true;
+  }
   F.S = () => S;
   F.setState = ns => { S = Object.assign(DEFAULT(), ns); save(true); };
 
@@ -54,7 +60,11 @@
   F.thumb = (id, lg) => '<div class="thumb' + (lg ? ' lg' : '') + '" style="background-image:url(' + E.img(id, 0) + ')"><div class="b" style="background-image:url(' + E.img(id, 1) + ')"></div></div>';
   F.demo = (id, extra) => '<div class="demo"><img src="' + E.img(id, 0) + '" alt=""><img class="b" src="' + E.img(id, 1) + '" alt="">' + (extra || '') + '</div>';
   F.toast = msg => { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2700); };
-  F.todayIdx = () => S.plan && S.plan.sched[new Date().getDay()] != null ? S.plan.sched[new Date().getDay()] : null;
+  F.smart = () => !!(S.profile && S.profile.smartSched !== false && window.Schedule);
+  F.sched = () => F.smart() ? window.Schedule.compute(S) : null;
+  F.todayIdx = () => { if (!S.plan) return null; const sc = F.sched(); if (sc) return sc.today && sc.today.kind === 'lift' ? sc.today.idx : null; return S.plan.sched[new Date().getDay()] != null ? S.plan.sched[new Date().getDay()] : null; };
+  F.cardioDows = () => { const sc = F.sched(); return sc ? sc.cardioDows : (S.plan.cardioDays || []); };
+  F.perWeek = () => (S.profile && (S.profile.perWeek || (S.profile.days || []).length)) || 3;
   F.doneToday = () => S.sessions.some(s => E.startOfDay(s.date) === E.startOfDay(Date.now()));
   F.dayMuscles = day => { const v = {}; day.items.forEach(it => { const e = E.ex(it.exId); if (!e) return; const inv = E.involvement(e); for (const m in inv) v[m] = (v[m] || 0) + inv[m] * it.sets; }); const mx = Math.max(1, ...Object.values(v)); for (const m in v) v[m] = Math.max(0.25, v[m] / mx); return v; };
   F.repUnit = (exId, it) => { if (it && it.unit) return it.unit; const e = E.ex(exId); return e && e.f === 'stat' ? 'sec' : 'reps'; };
@@ -219,5 +229,6 @@
     F.refreshIntegrations();
     setTimeout(() => { if (F.syncAll) { F.syncAll(true); F.scheduleSync(); } }, 800);
     if (S.active) { UI.stack = [{ t: 'workout' }]; render(); if (F.resumeWorkout) F.resumeWorkout(); }
+    if (S.repUpgrade) { delete S.repUpgrade; save(true); setTimeout(() => F.toast('Updated: higher rep ranges + smart scheduling. Adjust in Plan → ⚙'), 1200); }
   };
 })();

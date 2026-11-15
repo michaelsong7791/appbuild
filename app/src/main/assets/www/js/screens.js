@@ -18,8 +18,9 @@
     let h = '<div class="screen">' + topbar(esc(e.n), '<button class="icon-btn" data-a="fav" data-id="' + e.id + '" style="color:' + (fav ? 'var(--accent)' : 'inherit') + '">' + (fav ? I.heart : I.heartO) + '</button>') + '<div class="body" data-scroll="ex"><div class="page"><div class="grid two"><div class="col" style="gap:var(--gap)">';
     h += F.demo(e.id, '<span class="badge tag accent">Demo</span>');
     h += '<div class="row wrap"><span class="tag accent">' + esc(E.EQUIPMENT[e.eq]) + '</span><span class="tag">' + (e.mech === 'c' ? 'Compound' : 'Isolation') + '</span><span class="tag">' + ({ b: 'Beginner', i: 'Intermediate', e: 'Expert' }[e.lv]) + '</span>' + (e.f !== 'stat' ? '<span class="tag">' + (e.f === 'push' ? 'Push' : 'Pull') + '</span>' : '') + e.req.map(r => '<span class="tag">Needs ' + esc(E.EQUIPMENT[r]) + '</span>').join('') + '</div>';
-    h += '<div class="card"><div class="card-h"><h3>Muscles worked</h3></div>' + F.bodyPair(inv, 'target') + '<div style="margin-top:10px">' + Object.entries(inv).sort((a, b) => b[1] - a[1]).map(([m, v]) => '<div class="inv"><span>' + F.mLabel(m) + '</span><div class="bar"><i style="width:' + v * 100 + '%"></i></div><span class="small muted" style="text-align:right">' + (v === 1 ? 'Main' : 'Assist') + '</span></div>').join('') + '</div></div>';
-    h += '</div><div class="col" style="gap:var(--gap)"><div class="card"><div class="card-h"><h3>How to</h3></div><ol class="steps">' + e.ins.map(s => '<li>' + esc(s) + '</li>').join('') + '</ol></div>';
+    const det = window.Muscles.detail(e);
+    h += '<div class="card"><div class="card-h"><h3>Muscles worked</h3><span class="small muted">% of total effort</span></div>' + F.detailMap(F.exSub(e)) + F.muscleBreakdown(det) + '<div class="tiny dim" style="margin-top:10px">Pri = primary mover (≥15%), Sec = secondary (6–15%), Sta = stabiliser. Estimated from movement mechanics & published EMG data.</div></div>';
+    h += '</div><div class="col" style="gap:var(--gap)">' + F.loadCard(e) + '<div class="card"><div class="card-h"><h3>How to</h3></div><ol class="steps">' + e.ins.map(s => '<li>' + esc(s) + '</li>').join('') + '</ol></div>';
     if (hist.length) {
       const best = hist.reduce((b, x) => x.best > b.best ? x : b, hist[0]);
       h += '<div class="card"><div class="card-h"><h3>Your history</h3><span class="small muted">' + hist.length + ' sessions</span></div><div class="stats" style="margin-bottom:12px"><div class="stat"><div class="num">' + Math.round(best.best) + '</div><div class="lbl">Best e1RM</div></div><div class="stat"><div class="num">' + F.fmtW(Math.max(...hist.flatMap(x => x.sets.map(s => s.w || 0)))) + '</div><div class="lbl">Top ' + F.u() + '</div></div><div class="stat"><div class="num">' + F.fmtVol(hist.reduce((a, x) => a + x.vol, 0)) + '</div><div class="lbl">Volume</div></div></div>' + F.lineChart(hist.map(x => [x.date, x.best])) +
@@ -28,6 +29,25 @@
     h += '<div class="row wrap"><button class="btn primary" data-a="addToDaySheet" data-id="' + e.id + '">' + I.plus + 'Add to a plan day</button><button class="btn ghost" data-a="block" data-id="' + e.id + '">' + (blk ? 'Allow in plans' : 'Never suggest') + '</button></div>';
     return h + '</div></div></div></div></div>';
   }
+  /** "Your weight" card: next prescription, estimated 1RM, rep-max table and first-try guidance. */
+  F.loadCard = e => {
+    const st = S(); const L = window.Load; if (!L) return '';
+    const sc = e.f === 'stat' ? null : E.scheme(st.profile.goal, st.profile.experience, e.mech === 'c', st.profile.preserve, st.profile.repStyle);
+    const u = F.u();
+    if (!sc || e.eq === 'bodyweight' || e.eq === 'band' || e.cat === 'st') return '<div class="card"><div class="card-h"><h3>Load</h3></div><div class="small muted">' + (e.cat === 'st' ? 'Stretch — hold each side for 30–60 s, breathing slowly.' : e.f === 'stat' ? 'Timed hold — add 5–10 s each session once the current time feels easy.' : 'Bodyweight/band exercise — progress by adding reps, slowing the lowering phase, or using a harder variation.') + '</div></div>';
+    const p = L.prescribe(st, Object.assign({ exId: e.id }, sc)); if (!p) return '';
+    const rir = p.rir;
+    let h = '<div class="card"><div class="card-h"><h3>Your weight</h3><span class="tag ' + (p.basis === 'history' ? 'fresh' : 'gold') + '">' + ({ history: 'From your history', transfer: 'From related lifts', standard: 'First-try estimate' })[p.basis] + '</span></div>';
+    h += '<div class="row" style="align-items:flex-end;gap:14px"><div><div class="tiny muted" style="font-weight:700;letter-spacing:.1em">' + (p.basis === 'history' ? 'NEXT SESSION' : 'START WITH') + '</div><div class="num" style="font-size:40px;line-height:1">' + F.fmtW(p.w) + ' <span style="font-size:18px;color:var(--muted)">' + u + (e.eq === 'dumbbell' || e.eq === 'kettlebell' ? ' each' : '') + '</span></div><div class="small">× ' + p.r + ' reps · ' + sc.sets + ' sets · ~' + (p.basis === 'history' ? rir : 4) + ' reps in reserve</div></div><div class="grow"></div><div style="text-align:right"><div class="num" style="font-size:24px">' + p.e1rm + '</div><div class="tiny muted">est. 1-rep max</div></div></div>';
+    h += '<div class="small muted" style="margin-top:10px">' + esc(p.note) + '</div>';
+    if (p.basis !== 'history') {
+      h += '<ol class="steps small" style="margin-top:12px"><li>Warm up: 1 set of 10 with ~50% of ' + F.fmtW(p.w) + ' ' + u + ', then 5 reps with ~75%.</li><li>Do set 1 at <b>' + F.fmtW(p.w) + ' ' + u + '</b> for ' + p.r + ' clean reps.</li><li>Tap how many more reps you could have done — Forge recalculates sets 2+ to land at ~' + rir + ' reps in reserve.</li><li>From then on the weight comes from your estimated 1RM and progresses automatically.</li></ol>';
+    }
+    // rep-max table
+    const one = p.e1rm; const reps = [1, 3, 5, 8, 10, 12, 15];
+    h += '<div class="tiny muted" style="margin-top:10px;font-weight:700;letter-spacing:.08em">ESTIMATED MAX FOR REPS</div><div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">' + reps.map(r => '<div class="stat" style="padding:6px 8px;min-width:52px;text-align:center"><div class="num" style="font-size:16px">' + F.fmtW(r === 1 ? one : Math.round(one / (1 + r / 30) * 2) / 2) + '</div><div class="lbl">' + r + ' rep' + (r > 1 ? 's' : '') + '</div></div>').join('') + '</div>';
+    return h + '</div>';
+  };
   A.fav = d => { const p = S().profile; p.favorites = p.favorites || []; const i = p.favorites.indexOf(d.id); i >= 0 ? p.favorites.splice(i, 1) : p.favorites.push(d.id); F.save(); F.render(); };
   A.block = d => { const p = S().profile; p.blocked = p.blocked || []; const i = p.blocked.indexOf(d.id); i >= 0 ? p.blocked.splice(i, 1) : p.blocked.push(d.id); F.save(); F.toast(i >= 0 ? 'Will be suggested again' : 'Won’t be suggested in new plans'); F.render(); };
   A.addToDaySheet = d => F.sheet({ t: 'addToDay', id: d.id });
@@ -35,18 +55,19 @@
   // ---------- Day editor ----------
   function dayScreen(top) {
     const st = S(); const day = st.plan.days[top.idx]; if (!day) return '';
-    const dows = Object.keys(st.plan.sched).filter(k => st.plan.sched[k] === top.idx).map(k => F.DOW[k]);
+    const scd = F.sched(); const dows = scd ? scd.days.filter(d => d.kind === 'lift' && d.idx === top.idx).map(d => d.k === 0 ? 'Today' : d.k === 1 ? 'Tomorrow' : F.DOW[d.dow]) : Object.keys(st.plan.sched).filter(k => st.plan.sched[k] === top.idx).map(k => F.DOW[k]);
     const vals = F.dayMuscles(day);
     let h = '<div class="screen">' + topbar(esc(day.title), '<button class="icon-btn" data-a="renameDay" data-idx="' + top.idx + '">' + I.edit + '</button>') + '<div class="body" data-scroll="day"><div class="page"><div class="grid side"><div class="col" style="gap:var(--gap)">';
-    h += '<div class="row wrap"><span class="tag accent">' + (dows.join(' · ') || 'Unscheduled') + '</span><span class="tag">' + day.items.length + ' exercises</span><span class="tag">~' + F.dayMinutes(day) + ' min</span><span class="tag">' + day.items.reduce((a, i) => a + i.sets, 0) + ' sets</span></div>';
+    h += '<div class="row wrap"><span class="tag accent">' + (dows.length ? (scd ? 'Next: ' : '') + dows.join(' · ') : (scd ? 'Not in the next 7 days' : 'Unscheduled')) + '</span><span class="tag">' + day.items.length + ' exercises</span><span class="tag">~' + F.dayMinutes(day) + ' min</span><span class="tag">' + day.items.reduce((a, i) => a + i.sets, 0) + ' sets</span></div>';
     h += '<div class="card tight" style="padding-top:2px;padding-bottom:2px">';
     day.items.forEach((it, i) => {
       const e = E.ex(it.exId); if (!e) return;
-      const sug = E.suggest(st.sessions, it, F.u());
+      const sug = E.suggest(st.sessions, it, F.u(), st);
       h += '<div class="exrow" style="align-items:flex-start"><button data-a="ex" data-id="' + e.id + '">' + F.thumb(e.id) + '</button><div class="grow" style="padding-top:2px"><div class="nm">' + esc(e.n) + '</div><div class="sub">' + it.sets + ' × ' + it.repMin + (it.repMax !== it.repMin ? '–' + it.repMax : '') + (F.repUnit(it.exId) === 'sec' ? ' sec' : '') + ' · rest ' + it.rest + 's' + (sug.w ? ' · next ' + F.fmtW(sug.w) + ' ' + F.u() : '') + '</div><div class="row" style="gap:6px;margin-top:8px"><button class="icon-btn sm" data-a="editItem" data-d="' + top.idx + '" data-i="' + i + '">' + I.edit + '</button><button class="icon-btn sm" data-a="swapItem" data-d="' + top.idx + '" data-i="' + i + '">' + I.swap + '</button><button class="icon-btn sm" data-a="moveItem" data-d="' + top.idx + '" data-i="' + i + '" data-dir="-1">' + I.up + '</button><button class="icon-btn sm" data-a="moveItem" data-d="' + top.idx + '" data-i="' + i + '" data-dir="1">' + I.down + '</button><button class="icon-btn sm" data-a="delItem" data-d="' + top.idx + '" data-i="' + i + '" style="color:#ff8a8a">' + I.trash + '</button></div></div></div>';
     });
     h += '</div><button class="btn ghost block" data-a="pickAdd" data-d="' + top.idx + '">' + I.plus + 'Add exercise</button></div>';
-    h += '<div class="col" style="gap:var(--gap)"><div class="card"><div class="card-h"><h3>Targets</h3></div>' + F.bodyPair(vals, 'target') + '<div class="small muted" style="text-align:center;margin-top:8px">' + esc(F.musclesTxt(vals)) + '</div></div></div></div></div></div>';
+    const dsub = F.itemsSub(day.items);
+    h += '<div class="col" style="gap:var(--gap)"><div class="card"><div class="card-h"><h3>Targets</h3><span class="small muted">share of session work</span></div>' + F.detailMap(dsub) + F.muscleBreakdown(F.subList(dsub).filter(x => x.pct >= 2), { noRole: 1 }) + '</div></div></div></div></div>';
     h += '<div class="foot"><button class="btn primary lg grow" data-a="start" data-idx="' + top.idx + '">' + I.play + 'Start this workout</button></div></div>';
     return h;
   }
@@ -64,7 +85,7 @@
     let h = '<div class="screen" style="animation:none">';
     h += '<div class="wk-top"><button class="icon-btn" data-a="minimize">' + I.down + '</button><div class="grow"><div class="tiny muted" style="letter-spacing:.1em;font-weight:700">' + esc(a.title.toUpperCase()) + '</div><div class="wk-clock" id="wk-clock">' + F.clock(Date.now() - a.date) + '</div></div><div class="hrpill off" id="wk-hr">' + I.heart + '<span class="v">--</span></div><button class="icon-btn" data-a="wkList">' + I.list + '</button></div>';
     h += '<div class="wk-progress">' + a.items.map((x, k) => '<i class="' + (x.sets.every(s => s.done) ? 'done' : k === a.cur ? 'cur' : '') + '"></i>').join('') + '</div>';
-    h += '<div class="wk-body" data-scroll="wk"><div class="wk-layout"><div class="demo-col col" style="gap:12px">' + F.demo(e.id) + '<div><div class="row between"><div class="tiny muted" style="font-weight:700;letter-spacing:.1em">EXERCISE ' + (a.cur + 1) + ' OF ' + a.items.length + '</div><button class="small" style="color:var(--accent-2);font-weight:700" data-a="ex" data-id="' + e.id + '">How to ›</button></div><h2 style="font-size:26px;margin-top:2px">' + esc(it.alias || e.n) + '</h2>' + (it.alias ? '<div class="small muted">' + esc(e.n) + '</div>' : '') + '<div class="target" style="margin-top:6px"><span class="tag accent">' + it.sets.length + ' × ' + it.repMin + (it.repMax !== it.repMin ? '–' + it.repMax : '') + ' ' + unit + '</span><span class="tag">Rest ' + it.rest + 's</span><span class="tag">' + esc(e.pm.map(F.mLabel).join(', ')) + '</span></div>' + (it.note ? '<div class="small muted" style="margin-top:8px">💡 ' + esc(it.note) + '</div>' : '') + '</div>';
+    h += '<div class="wk-body" data-scroll="wk"><div class="wk-layout"><div class="demo-col col" style="gap:12px">' + F.demo(e.id) + '<div><div class="row between"><div class="tiny muted" style="font-weight:700;letter-spacing:.1em">EXERCISE ' + (a.cur + 1) + ' OF ' + a.items.length + '</div><button class="small" style="color:var(--accent-2);font-weight:700" data-a="ex" data-id="' + e.id + '">How to ›</button></div><h2 style="font-size:26px;margin-top:2px">' + esc(it.alias || e.n) + '</h2>' + (it.alias ? '<div class="small muted">' + esc(e.n) + '</div>' : '') + '<div class="target" style="margin-top:6px"><span class="tag accent">' + it.sets.length + ' × ' + it.repMin + (it.repMax !== it.repMin ? '–' + it.repMax : '') + ' ' + unit + '</span><span class="tag">Rest ' + it.rest + 's</span>' + ((it.basis === 'history' && it.e1rm) || it.e1rmLive ? '<span class="tag gold">est. 1RM ' + (it.e1rmLive || it.e1rm) + '</span>' : '') + '</div><div class="small muted" style="margin-top:6px">💪 ' + esc(F.topSubs(e, 4)) + '</div>' + (it.note ? '<div class="small muted" style="margin-top:8px">💡 ' + esc(it.note) + '</div>' : '') + '</div>';
     if (unit !== 'sec') h += '<div class="watchbox">' + I.watch.replace('<svg', '<svg width="22" height="22" style="color:var(--accent-2)"') + '<div class="grow">Watch reps <b id="wk-reps">' + (a.watch.reps || 0) + '</b><div class="tiny muted">Auto-counted from wrist motion · tap ✓ on the watch to log</div></div></div>';
     h += '</div>';
     h += '<div class="col" style="gap:10px"><div class="sets">';
@@ -81,7 +102,8 @@
         if (s.tempo && s.tempo.length) meta.push('tempo ' + (s.tempo.reduce((x, y) => x + y, 0) / s.tempo.length / 1000).toFixed(1) + 's/rep');
         if (s.vloss != null) meta.push('speed drop ' + Math.round(s.vloss * 100) + '%' + (s.vloss > 0.3 ? ' — near failure' : ''));
         if (meta.length) h += '<div class="meta">' + meta.map(esc).join('<span class="dim">·</span>') + '</div>';
-        if (st.settings.rpePrompt && (k === j - 1 || (j === it.sets.length && k === it.sets.length - 1) || s.rpe)) h += '<div class="rpe"><span class="tiny muted" style="align-self:center;width:34px;text-align:center">RPE</span>' + [6, 7, 8, 9, 10].map(v => '<button class="' + (s.rpe === v ? 'on' : '') + '" data-a="rpe" data-i="' + a.cur + '" data-j="' + k + '" data-v="' + v + '">' + v + '</button>').join('') + '</div>';
+        if (it.calib && k === 0 && !s.calibrated && s.w > 0) h += '<div class="rpe" style="flex-wrap:wrap"><div class="small" style="width:100%;margin:2px 0 6px;color:var(--gold);font-weight:600">🎯 Calibrate: how many more reps could you have done?</div>' + [[0, '0'], [1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5+']].map(([v, l]) => '<button data-a="rir" data-i="' + a.cur + '" data-j="' + k + '" data-v="' + v + '">' + l + '</button>').join('') + '</div>';
+        else if (st.settings.rpePrompt && (k === j - 1 || (j === it.sets.length && k === it.sets.length - 1) || s.rpe)) h += '<div class="rpe"><span class="tiny muted" style="align-self:center;width:34px;text-align:center">RPE</span>' + [6, 7, 8, 9, 10].map(v => '<button class="' + (s.rpe === v ? 'on' : '') + '" data-a="rpe" data-i="' + a.cur + '" data-j="' + k + '" data-v="' + v + '">' + v + '</button>').join('') + '</div>';
       }
       h += '</div>';
     });
@@ -113,7 +135,8 @@
     if (s.xpLines) h += '<div class="card"><div class="card-h"><h3>XP earned</h3></div>' + s.xpLines.map(l => '<div class="xpline"><span>' + esc(l.k) + '</span><b>+' + l.v + '</b></div>').join('') + ((s.quests || []).length ? '<div class="xpline"><span>Quest complete</span><b>✓</b></div>' : '') + '</div>';
     h += F.energyCard(s.energy || window.Energy.strengthEnergy(s, st));
     if ((s.hr || []).length > 5) h += '<div class="card"><div class="card-h"><h3>Heart rate</h3><span class="small muted">avg ' + x.hrAvg + ' · max ' + x.hrMax + (s.hrSource === 'health' ? ' · from Samsung Health' : '') + '</span></div>' + F.lineChart(s.hr.map(p => [p[0], p[1]]), { color: 'var(--hot)' }) + '</div>';
-    h += '</div><div class="col" style="gap:var(--gap)"><div class="card"><div class="card-h"><h3>Muscles worked</h3></div>' + F.bodyPair(vals, 'target') + '</div>';
+    const ssub = F.itemsSub(s.items, true);
+    h += '</div><div class="col" style="gap:var(--gap)"><div class="card"><div class="card-h"><h3>Muscles worked</h3><span class="small muted">share of session work</span></div>' + F.detailMap(ssub) + F.muscleBreakdown(F.subList(ssub).filter(x => x.pct >= 2), { noRole: 1 }) + '</div>';
     h += '<div class="card"><div class="card-h"><h3>Exercises</h3></div>' + s.items.map(it => { const e = E.ex(it.exId); return '<button class="exrow" data-a="ex" data-id="' + it.exId + '"><img class="thumb" style="width:44px;height:44px" src="' + E.img(it.exId, 0) + '"><div class="grow"><div class="nm ellipsis">' + esc(e ? e.n : it.exId) + '</div><div class="sub">' + it.sets.map(z => F.fmtW(z.w) + '×' + z.r + (z.rpe ? '@' + z.rpe : '')).join('  ') + '</div></div></button>'; }).join('') + '</div>';
     const syn = s.synced || {};
     h += '<div class="card"><div class="card-h"><h3>Sync</h3></div><div class="list">' +
@@ -131,7 +154,10 @@
     const p = F.UI.psDraft || (F.UI.psDraft = JSON.parse(JSON.stringify(S().profile)));
     let h = '<div class="screen">' + topbar('Goals &amp; schedule') + '<div class="body" data-scroll="ps"><div class="page" style="max-width:720px">';
     h += section('Goal', goalOpts(p, 'ps'));
-    h += section('Training days', dayPick(p, 'ps') + '<div class="small muted" style="margin-top:8px">' + p.days.length + ' days → ' + esc(E.SPLIT_LABEL[E.autoSplit(p.days.length, p.experience)]) + ' recommended</div>');
+    h += section(p.smartSched !== false ? 'Days you can train' : 'Training days', dayPick(p, 'ps') + '<div class="small muted" style="margin-top:8px">' + Math.min(p.perWeek || p.days.length, p.days.length) + ' sessions/week → ' + esc(E.SPLIT_LABEL[E.autoSplit(Math.min(p.perWeek || p.days.length, p.days.length), p.experience)]) + ' recommended</div>');
+    const sm = p.smartSched !== false; const pw = Math.min(p.perWeek || p.days.length, p.days.length);
+    h += section('Scheduling', '<div class="li" style="padding-top:0"><div class="grow"><b>Smart scheduling</b><div class="small muted">Pick the best day & workout from muscle recovery, cardio, sleep & HRV. Off = fixed weekdays.</div></div><button class="switch ' + (sm ? 'on' : '') + '" data-a="psSet" data-k="smartSched" data-v="' + (sm ? '' : '1') + '" data-bool="1"></button></div>' + (sm ? '<div class="li"><div class="grow">Weight sessions per week<div class="small muted">chosen from the ' + p.days.length + ' days you marked available</div></div><div class="stepper" style="width:130px"><button data-a="psPw" data-d="-1">−</button><div class="vc"><span class="num" style="font-size:22px">' + pw + '</span><span class="u">per week</span></div><button data-a="psPw" data-d="1">+</button></div></div>' : ''));
+    h += section('Rep range', '<div class="seg">' + Object.keys(E.REP_STYLE).map(k => '<button class="' + ((p.repStyle || 'standard') === k ? 'on' : '') + '" data-a="psSet" data-k="repStyle" data-v="' + k + '">' + E.REP_STYLE[k].label + '</button>').join('') + '</div><div class="small muted" style="margin-top:8px">' + (function () { const sc = E.scheme(p.goal, p.experience, true, p.preserve, p.repStyle), si = E.scheme(p.goal, p.experience, false, p.preserve, p.repStyle); return 'Compound lifts ' + sc.repMin + '–' + sc.repMax + ' reps · isolation ' + si.repMin + '–' + si.repMax + ' reps'; })() + '</div>');
     h += section('Split', '<div class="chips wrap">' + ['auto', 'full', 'ul', 'ppl', 'bro'].map(k => '<button class="chip ' + ((p.split || 'auto') === k ? 'on' : '') + '" data-a="psSet" data-k="split" data-v="' + k + '">' + (k === 'auto' ? 'Auto' : E.SPLIT_LABEL[k]) + '</button>').join('') + '</div>');
     h += section('Session length', '<div class="seg">' + [30, 45, 60, 75, 90].map(m => '<button class="' + (p.sessionMin === m ? 'on' : '') + '" data-a="psSet" data-k="sessionMin" data-v="' + m + '" data-num="1">' + m + '′</button>').join('') + '</div>');
     h += section('Experience', '<div class="seg">' + ['beginner', 'intermediate', 'advanced'].map(m => '<button class="' + (p.experience === m ? 'on' : '') + '" data-a="psSet" data-k="experience" data-v="' + m + '">' + m[0].toUpperCase() + m.slice(1) + '</button>').join('') + '</div>');
@@ -150,7 +176,8 @@
   function focusPick(p, ns) { return '<div class="chips wrap">' + E.MAJOR.map(m => '<button class="chip ' + ((p.focus || []).includes(m) ? 'on' : '') + '" data-a="' + ns + 'Focus" data-m="' + m + '">' + F.mLabel(m) + '</button>').join('') + '</div>'; }
   const PRESETS = { gym: ['barbell', 'dumbbell', 'bench', 'cable', 'machine', 'smith', 'pullupbar', 'kettlebell', 'ezbar', 'band', 'bodyweight'], home: ['dumbbell', 'bench', 'band', 'bodyweight', 'pullupbar'], min: ['bodyweight', 'band'] };
   function mkSetters(ns, get) {
-    A[ns + 'Set'] = d => { get()[d.k] = d.num ? +d.v : d.v; F.render(); };
+    A[ns + 'Set'] = d => { get()[d.k] = d.bool ? !!d.v : d.num ? +d.v : d.v; F.render(); };
+    A[ns + 'Pw'] = d => { const p = get(); p.perWeek = Math.max(1, Math.min(p.days.length, (p.perWeek || p.days.length) + (+d.d))); F.render(); };
     A[ns + 'Day'] = d => { const p = get(); const v = +d.d; const i = p.days.indexOf(v); i >= 0 ? p.days.splice(i, 1) : p.days.push(v); F.render(); };
     A[ns + 'Eq'] = d => { const p = get(); const i = p.equipment.indexOf(d.k); i >= 0 ? p.equipment.splice(i, 1) : p.equipment.push(d.k); F.render(); };
     A[ns + 'EqPreset'] = d => { get().equipment = PRESETS[d.p].slice(); F.render(); };
@@ -161,7 +188,7 @@
   A.psSave = () => {
     const p = F.UI.psDraft; if (!p.days.length) { F.toast('Pick at least one training day'); return; }
     if (!p.equipment.length) p.equipment = ['bodyweight'];
-    S().profile = p; F.UI.psDraft = null; F.regenerate(false); F.UI.stack = []; F.UI.tab = 'plan'; F.toast('Plan rebuilt'); F.render();
+    if (p.perWeek) p.perWeek = Math.min(p.perWeek, p.days.length); S().profile = p; F.UI.psDraft = null; F.regenerate(true); if (window.Schedule) window.Schedule.invalidate(); F.UI.stack = []; F.UI.tab = 'plan'; F.toast('Plan rebuilt'); F.render();
   };
 
   // ---------- Sheets ----------
@@ -217,19 +244,19 @@
   function applySwap(sh, id) {
     const st = S();
     if (sh.mode === 'plan') { st.plan.days[sh.d].items[sh.i].exId = id; }
-    else { const it = st.active.items[sh.i]; const sug = E.suggest(st.sessions, { exId: id, repMin: it.repMin, repMax: it.repMax, sets: it.sets.length }, F.u()); it.exId = id; it.note = sug.note; it.sets.forEach(s => { if (!s.done) { s.w = sug.w; s.r = sug.r; } }); F.syncWatch(); }
+    else { const it = st.active.items[sh.i]; const sug = E.suggest(st.sessions, { exId: id, repMin: it.repMin, repMax: it.repMax, sets: it.sets.length }, F.u(), st); it.exId = id; it.note = sug.note; it.calib = !!sug.calib; it.e1rm = sug.e1rm || null; it.sets.forEach(s => { if (!s.done) { s.w = sug.w; s.r = sug.r; delete s.wEdited; } }); F.syncWatch(); }
     F.save(); F.UI.sheet = null; F.render();
   }
   A.doPick = d => {
     const sh = F.UI.sheet; const st = S(); const e = E.ex(d.id);
     if (sh.replace) return applySwap(sh, d.id);
-    const sc = e.f === 'stat' ? { sets: 3, repMin: 30, repMax: 60, rest: 60 } : E.scheme(st.profile.goal, st.profile.experience, e.mech === 'c');
+    const sc = e.f === 'stat' ? { sets: 3, repMin: 30, repMax: 60, rest: 60 } : E.scheme(st.profile.goal, st.profile.experience, e.mech === 'c', st.profile.preserve, st.profile.repStyle);
     if (sh.mode === 'plan') { st.plan.days[sh.d].items.push(Object.assign({ exId: e.id, m: e.pm[0] }, sc)); F.toast('Added ' + e.n); }
-    else { const sug = E.suggest(st.sessions, Object.assign({ exId: e.id }, sc), F.u()); st.active.items.push({ exId: e.id, repMin: sc.repMin, repMax: sc.repMax, rest: sc.rest, note: sug.note, sets: Array.from({ length: sc.sets }, () => ({ w: sug.w, r: sug.r, done: false })) }); st.active.cur = st.active.items.length - 1; F.syncWatch(); }
+    else { const sug = E.suggest(st.sessions, Object.assign({ exId: e.id }, sc), F.u(), st); st.active.items.push({ exId: e.id, repMin: sc.repMin, repMax: sc.repMax, rest: sc.rest, note: sug.note, calib: !!sug.calib, e1rm: sug.e1rm || null, sets: Array.from({ length: sc.sets }, () => ({ w: sug.w, r: sug.r, done: false })) }); st.active.cur = st.active.items.length - 1; F.syncWatch(); }
     F.save(); F.UI.sheet = null; F.render();
   };
   A.itemStep = d => { const sh = F.UI.sheet; const it = S().plan.days[sh.d].items[sh.i]; const lim = { sets: [1, 10], repMin: [1, 50], repMax: [1, 50], rest: [15, 600] }[d.k]; it[d.k] = Math.max(lim[0], Math.min(lim[1], it[d.k] + (+d.s))); if (it.repMax < it.repMin) { if (d.k === 'repMin') it.repMax = it.repMin; else it.repMin = it.repMax; } F.save(); F.render(); };
-  A.doAddToDay = d => { const st = S(); const e = E.ex(d.id); const sc = e.f === 'stat' ? { sets: 3, repMin: 30, repMax: 60, rest: 60 } : E.scheme(st.profile.goal, st.profile.experience, e.mech === 'c'); st.plan.days[+d.idx].items.push(Object.assign({ exId: e.id, m: e.pm[0] }, sc)); F.save(); F.UI.sheet = null; F.toast('Added to ' + st.plan.days[+d.idx].title); F.render(); };
+  A.doAddToDay = d => { const st = S(); const e = E.ex(d.id); const sc = e.f === 'stat' ? { sets: 3, repMin: 30, repMax: 60, rest: 60 } : E.scheme(st.profile.goal, st.profile.experience, e.mech === 'c', st.profile.preserve, st.profile.repStyle); st.plan.days[+d.idx].items.push(Object.assign({ exId: e.id, m: e.pm[0] }, sc)); F.save(); F.UI.sheet = null; F.toast('Added to ' + st.plan.days[+d.idx].title); F.render(); };
   A.openStravaApi = () => window.Bridge.call('app.openUrl', { url: 'https://www.strava.com/settings/api' }).catch(() => { });
   A.stravaSave = async () => {
     const id = (document.getElementById('sv-id') || {}).value, sec = (document.getElementById('sv-secret') || {}).value;
@@ -241,14 +268,14 @@
   const OB_STEPS = ['welcome', 'goal', 'exp', 'days', 'equip', 'focus', 'body'];
   V.onboarding = () => {
     const UI = F.UI;
-    if (!UI.obDraft) UI.obDraft = { name: '', goal: 'hypertrophy', experience: 'intermediate', days: [1, 3, 5], sessionMin: 60, split: 'auto', equipment: PRESETS.gym.slice(), focus: [], units: 'kg', bodyweight: null, age: null, sex: 'm', favorites: [], blocked: [] };
+    if (!UI.obDraft) UI.obDraft = { name: '', goal: 'hypertrophy', experience: 'intermediate', days: [1, 3, 5], sessionMin: 60, split: 'auto', equipment: PRESETS.gym.slice(), focus: [], units: 'kg', smartSched: true, repStyle: 'standard', bodyweight: null, age: null, sex: 'm', favorites: [], blocked: [] };
     const p = UI.obDraft; const step = OB_STEPS[UI.ob];
     if (UI.obBuilding) return '<div class="splash"><div class="forge-anim"></div><h2>Forging your plan…</h2><div class="muted small">Matching ' + E.all().length + ' exercises to your goals & gear</div></div>';
     let body = '', cta = 'Continue';
     if (step === 'welcome') { body = '<div style="padding-top:8vh"><div class="logo" style="font-size:44px">FORGE<b>.</b></div><h1 style="margin-top:22px">Train smarter.<br>Recover harder.</h1><p class="muted" style="font-size:16px">A planner that reads your Galaxy Watch and Samsung Health, tracks every muscle’s recovery, and adapts each session — with XP, streaks and quests to keep you coming back.</p><div class="field" style="margin-top:24px"><label>What should we call you?</label><input class="input" placeholder="Your name" value="' + esc(p.name) + '" data-ch="obName"></div></div>'; cta = 'Let’s build your plan'; }
     if (step === 'goal') body = '<h1>Main goal</h1><p class="muted">Sets your rep ranges, rest and weekly volume.</p>' + goalOpts(p, 'ob');
     if (step === 'exp') body = '<h1>Experience</h1><p class="muted">How long have you been lifting consistently?</p>' + [['beginner', '🌱', 'Under 1 year', 'Simpler moves, fewer sets to start'], ['intermediate', '🔩', '1–3 years', 'Standard volume, varied exercises'], ['advanced', '⚙️', '3+ years', 'Extra volume on compound lifts']].map(([k, ic, t, s]) => '<button class="opt ' + (p.experience === k ? 'on' : '') + '" data-a="obSet" data-k="experience" data-v="' + k + '"><div class="oi">' + ic + '</div><div><b>' + t + '</b><span>' + s + '</span></div></button>').join('');
-    if (step === 'days') body = '<h1>Schedule</h1><p class="muted">Pick the days you’ll train. Workouts are planned on exactly these days.</p>' + dayPick(p, 'ob') + '<div class="small muted" style="margin:10px 0 24px">' + p.days.length + ' days/week → <b style="color:var(--text)">' + E.SPLIT_LABEL[E.autoSplit(p.days.length, p.experience)] + '</b></div><div class="field"><label>Session length</label><div class="seg">' + [30, 45, 60, 75, 90].map(m => '<button class="' + (p.sessionMin === m ? 'on' : '') + '" data-a="obSet" data-k="sessionMin" data-v="' + m + '" data-num="1">' + m + ' min</button>').join('') + '</div></div>';
+    if (step === 'days') body = '<h1>Schedule</h1><p class="muted">Pick every day you <i>could</i> train. Forge’s smart schedule chooses the best ones from your recovery.</p>' + dayPick(p, 'ob') + '<div class="li" style="margin-top:8px"><div class="grow">Weight sessions per week</div><div class="stepper" style="width:130px"><button data-a="obPw" data-d="-1">−</button><div class="vc"><span class="num" style="font-size:22px">' + Math.min(p.perWeek || p.days.length, p.days.length) + '</span><span class="u">per week</span></div><button data-a="obPw" data-d="1">+</button></div></div>' + '<div class="small muted" style="margin:10px 0 24px">' + p.days.length + ' sessions/week → <b style="color:var(--text)">' + E.SPLIT_LABEL[E.autoSplit(Math.min(p.perWeek || p.days.length, p.days.length), p.experience)] + '</b></div><div class="field"><label>Session length</label><div class="seg">' + [30, 45, 60, 75, 90].map(m => '<button class="' + (p.sessionMin === m ? 'on' : '') + '" data-a="obSet" data-k="sessionMin" data-v="' + m + '" data-num="1">' + m + ' min</button>').join('') + '</div></div>';
     if (step === 'equip') body = '<h1>Your gear</h1><p class="muted">Only exercises you can actually do will be planned.</p>' + equipPick(p, 'ob');
     if (step === 'focus') body = '<h1>Priorities</h1><p class="muted">Optional: up to 3 muscles to give extra volume.</p>' + focusPick(p, 'ob');
     if (step === 'body') { body = '<h1>About you</h1><p class="muted">Used for calorie estimates and bodyweight milestones.</p><div class="col" style="gap:14px"><div class="field"><label>Units</label><div class="seg"><button class="' + (p.units === 'kg' ? 'on' : '') + '" data-a="obSet" data-k="units" data-v="kg">kg</button><button class="' + (p.units === 'lb' ? 'on' : '') + '" data-a="obSet" data-k="units" data-v="lb">lb</button></div></div><div class="row"><div class="field grow"><label>Height (' + (p.units === 'lb' ? 'in' : 'cm') + ')</label><input class="input" type="number" inputmode="decimal" value="' + (p.heightIn || '') + '" data-ch="obH"></div><div class="field grow"><label>Bodyweight (' + p.units + ')</label><input class="input" type="number" inputmode="decimal" value="' + (p.bodyweight || '') + '" data-ch="obBw"></div><div class="field grow"><label>Age</label><input class="input" type="number" inputmode="numeric" value="' + (p.age || '') + '" data-ch="obAge"></div></div><div class="field"><label>Sex (for calorie formula)</label><div class="seg"><button class="' + (p.sex === 'm' ? 'on' : '') + '" data-a="obSet" data-k="sex" data-v="m">Male</button><button class="' + (p.sex === 'f' ? 'on' : '') + '" data-a="obSet" data-k="sex" data-v="f">Female</button></div></div></div>'; cta = 'Forge my plan'; }
@@ -268,7 +295,7 @@
     ['obBw', 'obAge', 'obH'].forEach(k => { const el = document.querySelector('[data-ch="' + k + '"]'); if (el) A[k]({}, el); });
     UI.obBuilding = true; F.render();
     setTimeout(() => {
-      const st = S(); st.profile = p; st.plan = E.generatePlan(p); UI.obDraft = null; UI.obBuilding = false; UI.ob = 0; F.save(true);
+      const st = S(); p.perWeek = p.perWeek || p.days.length; st.profile = p; st.plan = E.generatePlan(p); st.v = 3; UI.obDraft = null; UI.obBuilding = false; UI.ob = 0; F.save(true);
       F.render(); F.toast('Your plan is ready 🔥');
     }, 1300);
   };

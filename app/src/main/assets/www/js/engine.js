@@ -33,11 +33,11 @@
   };
 
   const GOALS = {
-    hypertrophy: { label: 'Build muscle',  c: [6, 10, 3, 120], i: [10, 15, 3, 75], weekly: [10, 20] },
-    strength:    { label: 'Get stronger',  c: [4, 6, 4, 180],  i: [8, 10, 3, 90],  weekly: [6, 12] },
-    fatloss:     { label: 'Lose fat',      c: [8, 12, 3, 75],  i: [12, 15, 3, 45], weekly: [8, 14] },
-    endurance:   { label: 'Endurance',     c: [12, 15, 3, 60], i: [15, 20, 2, 45], weekly: [8, 14] },
-    general:     { label: 'General fitness', c: [8, 10, 3, 90], i: [10, 12, 3, 60], weekly: [8, 14] },
+    hypertrophy: { label: 'Build muscle',  c: [8, 12, 3, 105], i: [12, 15, 3, 60], weekly: [10, 20], rir: 2 },
+    strength:    { label: 'Get stronger',  c: [5, 8, 4, 180],  i: [8, 12, 3, 90],  weekly: [6, 12], rir: 2 },
+    fatloss:     { label: 'Lose fat',      c: [10, 15, 3, 60], i: [12, 20, 3, 45], weekly: [8, 14], rir: 2 },
+    endurance:   { label: 'Endurance',     c: [15, 20, 3, 45], i: [15, 25, 2, 40], weekly: [8, 14], rir: 3 },
+    general:     { label: 'General fitness', c: [10, 12, 3, 90], i: [12, 15, 3, 60], weekly: [8, 14], rir: 2 },
   };
 
   let DB = [], BY = {};
@@ -45,7 +45,9 @@
   const ex = id => BY[id];
   const img = (id, n) => 'img/' + id + '__' + (n || 0) + '.webp';
 
+  const REP_STYLE = { lower: { lo: -3, hi: -3, label: 'Lower (heavier)' }, standard: { lo: 0, hi: 0, label: 'Standard' }, higher: { lo: 3, hi: 3, label: 'Higher' }, max: { lo: 6, hi: 8, label: 'Very high' } };
   function involvement(e) {
+    if (window.Muscles) return window.Muscles.groupInvolvement(e);
     const m = {};
     e.sm.forEach(x => { m[x] = 0.5; });
     e.pm.forEach(x => { m[x] = 1; });
@@ -182,9 +184,11 @@
       }).sort((a, b) => b.sc - a.sc);
   }
 
-  function scheme(goal, exp, isCompound, preserve) {
+  function scheme(goal, exp, isCompound, preserve, repStyle) {
     const g = GOALS[goal] || GOALS.general;
     let [lo, hi, sets, rest] = isCompound ? g.c : g.i;
+    const rs = REP_STYLE[repStyle] || REP_STYLE.standard;
+    lo = Math.max(3, lo + rs.lo); hi = Math.max(lo + 1, hi + rs.hi);
     if (preserve && isCompound) { lo = 5; hi = 8; rest = Math.max(rest, 150); }
     let s = sets;
     if (exp === 'beginner') s = Math.max(2, s - (isCompound ? 0 : 1));
@@ -192,7 +196,7 @@
     return { sets: s, repMin: lo, repMax: hi, rest };
   }
 
-  function itemMinutes(it) { return (it.sets * (it.rest + 45) + 75) / 60; }
+  function itemMinutes(it) { const reps = it.unit === 'sec' ? it.repMax / 3.5 : (it.repMin + it.repMax) / 2; return (it.sets * (it.rest + 15 + reps * 3.5) + 75) / 60; }
 
   function buildDay(tpl, prof, used, rand) {
     const items = [];
@@ -207,7 +211,7 @@
       const c = candidates(sl, prof, used, { rand });
       if (!c.length) return;
       const e = c[0].e; used.add(e.id);
-      const sc = e.f === 'stat' ? { sets: 3, repMin: 30, repMax: 60, rest: 60 } : scheme(prof.goal, prof.experience, e.mech === 'c' && sl.pat !== 'iso', prof.preserve);
+      const sc = e.f === 'stat' ? { sets: 3, repMin: 30, repMax: 60, rest: 60 } : scheme(prof.goal, prof.experience, e.mech === 'c' && sl.pat !== 'iso', prof.preserve, prof.repStyle);
       if (sl.focus || (prof.focus || []).includes(sl.m)) sc.sets += 1;
       items.push(Object.assign({ exId: e.id, m: sl.m, low: !!sl.low, slot: sl }, sc));
     });
@@ -229,7 +233,7 @@
 
   function generatePlan(prof, seed) {
     seed = seed || (Date.now() & 0xffffff);
-    const split = prof.split && prof.split !== 'auto' ? prof.split : autoSplit(prof.days.length, prof.experience);
+    const split = prof.split && prof.split !== 'auto' ? prof.split : autoSplit(prof.smartSched !== false && prof.perWeek ? Math.min(prof.perWeek, prof.days.length) : prof.days.length, prof.experience);
     const tpls = TEMPLATES[split];
     const used = new Set(); const rand = rng(seed);
     const days = tpls.map(t => buildDay(t, prof, used, rand));
@@ -277,7 +281,8 @@
   }
 
   /** Suggest weight & reps for next time based on last performance (double progression). */
-  function suggest(sessions, item, units) {
+  function suggest(sessions, item, units, st) {
+    if (st && window.Load && st.profile) { const r = window.Load.prescribe(st, item); if (r) return r; }
     const e = ex(item.exId); const h = exHistory(sessions, item.exId);
     if (!h.length) return { w: null, r: item.repMax, note: 'First time — pick a weight you could lift ' + (item.repMax + 2) + ' times.' };
     const last = h[h.length - 1].sets;
@@ -366,7 +371,7 @@
   function isoWeek(t) { const d = new Date(t); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7); const w1 = new Date(d.getFullYear(), 0, 4); return d.getFullYear() + '-W' + String(1 + Math.round(((d - w1) / DAY - 3 + (w1.getDay() + 6) % 7) / 7)).padStart(2, '0'); }
 
   window.Engine = {
-    MUSCLES, MAJOR, EQUIPMENT, GOALS, TEMPLATES, SPLIT_LABEL, DAY, H,
+    MUSCLES, MAJOR, EQUIPMENT, GOALS, REP_STYLE, TEMPLATES, SPLIT_LABEL, DAY, H,
     loadDb, ex, img, involvement, all: () => DB,
     readiness, muscleFatigue, setEffort, estRpeFromVloss,
     generatePlan, cardioDays, autoSplit, alternatives, candidates, scheme, itemMinutes, hasEquip,

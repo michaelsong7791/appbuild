@@ -33,7 +33,7 @@
 
   // ---------- Streaks ----------
   function weekStreak(state) {
-    const target = Math.max(1, (state.profile.days || []).length);
+    const target = Math.max(1, state.profile.perWeek || (state.profile.days || []).length);
     const byWeek = {};
     state.sessions.forEach(s => { const k = E().startOfWeek(s.date); byWeek[k] = (byWeek[k] || 0) + 1; });
     let w = E().startOfWeek(Date.now()); let streak = 0;
@@ -96,7 +96,7 @@
   // ---------- Weekly quests ----------
   const QUESTS = [
     { id: 'sets40', name: 'Volume Hunter', desc: 'Log 40 working sets', target: 40, xp: 200, prog: (ss) => ss.reduce((a, s) => a + E().sessionStats(s).sets, 0) },
-    { id: 'plan', name: 'By the Book', desc: 'Complete every planned session', target: 0, xp: 300, prog: (ss, st) => ss.length, tgt: st => Math.max(1, st.profile.days.length) },
+    { id: 'plan', name: 'By the Book', desc: 'Complete every planned session', target: 0, xp: 300, prog: (ss, st) => ss.length, tgt: st => Math.max(1, st.profile.perWeek || st.profile.days.length) },
     { id: 'pr2', name: 'Record Breaker', desc: 'Set 2 personal records', target: 2, xp: 220, prog: (ss) => ss.reduce((a, s) => a + (s.prs || []).length, 0) },
     { id: 'legs2', name: 'Never Skip', desc: 'Train legs in 2 sessions', target: 2, xp: 180, prog: (ss) => ss.filter(s => { const m = E().sessionStats(s).mus; return (m.quadriceps || 0) + (m.hamstrings || 0) >= 3; }).length },
     { id: 'rpe20', name: 'Honest Effort', desc: 'Log RPE on 20 sets', target: 20, xp: 150, prog: (ss) => ss.reduce((a, s) => a + s.items.reduce((b, it) => b + it.sets.filter(x => x.done && x.rpe).length, 0), 0) },

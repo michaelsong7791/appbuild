@@ -10,7 +10,7 @@
     opts = opts || {};
     const st = S(); const fat = F.fatigue();
     const items = day.items.map(it => {
-      const sug = E.suggest(st.sessions, it, F.u());
+      const sug = E.suggest(st.sessions, it, F.u(), st);
       let sets = it.sets;
       const e = E.ex(it.exId);
       const pmF = e ? Math.max(...e.pm.map(m => fat[m] || 0)) : 0;
@@ -19,7 +19,7 @@
       const lowReady = opts.adapt && F.readiness().score < 55;
       const w = sug.w != null && lowReady ? E.round(sug.w * 0.9, E.increment(e, F.u()) || 1) : sug.w;
       return {
-        exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, unit: it.unit, alias: it.alias, note: it.unit === 'sec' ? (it.finisher ? 'Conditioning finisher — go hard for the full time.' : 'Timed hold — tap ✓ to start the countdown.') : sug.note + (adapted ? ' (1 set trimmed — muscle still recovering)' : ''),
+        exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, unit: it.unit, alias: it.alias, calib: !!sug.calib, basis: sug.basis || null, e1rm: sug.e1rm || null, note: it.unit === 'sec' ? (it.finisher ? 'Conditioning finisher — go hard for the full time.' : 'Timed hold — tap ✓ to start the countdown.') : sug.note + (adapted ? ' (1 set trimmed — muscle still recovering)' : ''),
         sets: Array.from({ length: sets }, () => ({ w: it.unit === 'sec' ? null : w, r: it.unit === 'sec' ? it.repMax : sug.r, done: false })),
       };
     });
@@ -61,18 +61,24 @@
   A.wStep = d => {
     const a = S().active; const it = a.items[+d.i]; const s = it.sets[+d.j]; const e = E.ex(it.exId);
     const inc = E.increment(e, F.u()) || (F.u() === 'lb' ? 5 : 2.5);
-    s.w = Math.max(0, E.round((s.w || 0) + (+d.dir) * inc, inc / 2));
+    s.w = Math.max(0, E.round((s.w || 0) + (+d.dir) * inc, inc / 2)); s.wEdited = true;
     // propagate to following undone sets
-    it.sets.slice(+d.j + 1).forEach(x => { if (!x.done) x.w = s.w; });
+    it.sets.slice(+d.j + 1).forEach(x => { if (!x.done) { x.w = s.w; x.wEdited = true; } });
     F.save(); F.render();
   };
   A.rStep = d => {
     const it = S().active.items[+d.i]; const s = it.sets[+d.j];
     s.r = Math.max(0, (s.r || 0) + (+d.dir)); s.rEdited = true; F.save(); F.render();
   };
-  A.wIn = (d, el) => { const it = S().active.items[+d.i]; const v = parseFloat(el.value); it.sets[+d.j].w = isNaN(v) ? null : v; it.sets.slice(+d.j + 1).forEach(x => { if (!x.done) x.w = it.sets[+d.j].w; }); F.save(); };
+  A.wIn = (d, el) => { const it = S().active.items[+d.i]; const v = parseFloat(el.value); it.sets[+d.j].w = isNaN(v) ? null : v; it.sets[+d.j].wEdited = true; it.sets.slice(+d.j + 1).forEach(x => { if (!x.done) { x.w = it.sets[+d.j].w; x.wEdited = true; } }); F.save(); };
   A.rIn = (d, el) => { const it = S().active.items[+d.i]; const v = parseInt(el.value, 10); it.sets[+d.j].r = isNaN(v) ? null : v; it.sets[+d.j].rEdited = true; F.save(); };
-  A.rpe = d => { const s = S().active.items[+d.i].sets[+d.j]; s.rpe = s.rpe === +d.v ? null : +d.v; F.save(); F.render(); };
+  A.rpe = d => { const it = S().active.items[+d.i]; const s = it.sets[+d.j]; s.rpe = s.rpe === +d.v ? null : +d.v; retune(it, +d.j); F.save(); F.render(); };
+  A.rir = d => { const it = S().active.items[+d.i]; const s = it.sets[+d.j]; s.rpe = 10 - (+d.v); s.calibrated = true; retune(it, +d.j); F.save(); F.render(); };
+  function retune(it, j) {
+    if (!window.Load) return;
+    const msg = window.Load.autoregulate(S(), it, j);
+    if (msg) { it.note = msg + (it.e1rmLive ? ' (est. 1RM ' + it.e1rmLive + ' ' + F.u() + ')' : ''); F.toast(msg); F.syncWatch(); }
+  }
 
   A.toggleSet = d => {
     const a = S().active; const it = a.items[+d.i]; const s = it.sets[+d.j];
@@ -103,6 +109,7 @@
       }
     }
     a.watch = { reps: 0, tempo: [], peaks: [] };
+    if (s.r < it.repMin && !s.rpe && !(it.calib && j === 0)) retune(it, j);
     // Live PR check
     const hist = E.exHistory(S().sessions, it.exId);
     if (hist.length && s.w > 0) {
