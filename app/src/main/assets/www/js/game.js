@@ -24,7 +24,7 @@
     session.items.forEach(it => { const e = E().ex(it.exId); it.sets.forEach(s => { sets += setXp(s, e); }); });
     const st = E().sessionStats(session);
     const lines = [{ k: 'Sets', v: sets }];
-    if (st.sets >= 1) lines.push({ k: 'Workout complete', v: 50 + Math.min(70, st.dur) });
+    if (st.sets >= 1) lines.push(session.oneoff ? { k: 'Quick log', v: 15 } : { k: 'Workout complete', v: 50 + Math.min(70, st.dur) });
     if (prs.length) lines.push({ k: prs.length + ' personal record' + (prs.length > 1 ? 's' : ''), v: prs.length * 40 });
     if (planned) lines.push({ k: 'On-plan bonus', v: 30 });
     if ((session.hr || []).length > 20) lines.push({ k: 'Heart-rate tracked', v: 15 });
@@ -35,7 +35,7 @@
   function weekStreak(state) {
     const target = Math.max(1, state.profile.perWeek || (state.profile.days || []).length);
     const byWeek = {};
-    state.sessions.forEach(s => { const k = E().startOfWeek(s.date); byWeek[k] = (byWeek[k] || 0) + 1; });
+    state.sessions.filter(s => !s.oneoff).forEach(s => { const k = E().startOfWeek(s.date); byWeek[k] = (byWeek[k] || 0) + 1; });
     let w = E().startOfWeek(Date.now()); let streak = 0;
     const thisWeek = byWeek[w] || 0;
     if (thisWeek >= target) streak++;

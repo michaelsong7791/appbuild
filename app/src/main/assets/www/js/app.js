@@ -36,6 +36,7 @@
   }
   // v4: 3 working sets as the standard (tuned per exercise at workout time)
   if (S.profile && S.v < 4) { if (S.plan) S.plan.days.forEach(d => d.items.forEach(it => { if (it.unit !== 'sec' && !it.finisher) it.sets = 3; })); S.v = 4; }
+  if (S.custom) E.loadDb(window.EXDB || [], S.custom);
   F.S = () => S;
   F.setState = ns => { S = Object.assign(DEFAULT(), ns); save(true); };
 
@@ -53,6 +54,7 @@
   // ---------- helpers ----------
   const esc = F.esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   F.u = () => (S.profile && S.profile.units) || 'kg';
+  F.setTxt = s => (s.band != null ? (F.BANDS ? F.BANDS[s.band][0] : 'Band') + ' band' : s.w ? F.fmtW(s.w) : 'BW') + '×' + s.r;
   F.fmtW = w => (w == null || w === '') ? '—' : (Math.round(w * 10) / 10) + '';
   F.fmtVol = v => v >= 10000 ? (v / 1000).toFixed(1) + 'k' : Math.round(v).toLocaleString();
   F.fmtDur = min => min >= 60 ? Math.floor(min / 60) + 'h ' + (min % 60) + 'm' : min + ' min';
@@ -67,7 +69,7 @@
   F.todayIdx = () => { if (!S.plan) return null; const sc = F.sched(); if (sc) return sc.today && sc.today.kind === 'lift' ? sc.today.idx : null; return S.plan.sched[new Date().getDay()] != null ? S.plan.sched[new Date().getDay()] : null; };
   F.cardioDows = () => { const sc = F.sched(); return sc ? sc.cardioDows : (S.plan.cardioDays || []); };
   F.perWeek = () => (S.profile && (S.profile.perWeek || (S.profile.days || []).length)) || 3;
-  F.doneToday = () => S.sessions.some(s => E.startOfDay(s.date) === E.startOfDay(Date.now()));
+  F.doneToday = () => S.sessions.some(s => !s.oneoff && E.startOfDay(s.date) === E.startOfDay(Date.now()));
   F.dayMuscles = day => { const v = {}; day.items.forEach(it => { const e = E.ex(it.exId); if (!e) return; const inv = E.involvement(e); for (const m in inv) v[m] = (v[m] || 0) + inv[m] * it.sets; }); const mx = Math.max(1, ...Object.values(v)); for (const m in v) v[m] = Math.max(0.25, v[m] / mx); return v; };
   F.repUnit = (exId, it) => { if (it && it.unit) return it.unit; const e = E.ex(exId); return e && e.f === 'stat' ? 'sec' : 'reps'; };
   F.dayMinutes = day => Math.round(day.items.reduce((a, it) => a + E.itemMinutes(it), 0));

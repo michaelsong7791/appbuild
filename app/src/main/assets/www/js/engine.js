@@ -41,9 +41,27 @@
   };
 
   let DB = [], BY = {};
-  function loadDb(list) { DB = list; BY = {}; list.forEach(e => { BY[e.id] = e; }); }
+  // Resistance-band (and other) variants of existing exercises: same muscles & demo, different equipment.
+  const VARIANTS = [
+    ['v_band_curl', 'Dumbbell_Bicep_Curl', 'Band Biceps Curl'], ['v_band_hammer', 'Hammer_Curls', 'Band Hammer Curl'],
+    ['v_band_pushdown', 'Triceps_Pushdown', 'Band Triceps Pushdown'], ['v_band_ohext', 'Cable_Rope_Overhead_Triceps_Extension', 'Band Overhead Triceps Extension'],
+    ['v_band_row', 'Seated_Cable_Rows', 'Band Seated Row'], ['v_band_facepull', 'Face_Pull', 'Band Face Pull'],
+    ['v_band_fly', 'Cable_Crossover', 'Band Chest Fly'], ['v_band_frontraise', 'Front_Dumbbell_Raise', 'Band Front Raise'],
+    ['v_band_rdl', 'Romanian_Deadlift', 'Band Romanian Deadlift'], ['v_band_kickback', 'Glute_Kickback', 'Band Glute Kickback'],
+    ['v_band_pulldown', 'Wide-Grip_Lat_Pulldown', 'Band Lat Pulldown'], ['v_band_ohp', 'Dumbbell_Shoulder_Press', 'Band Overhead Press'],
+  ];
+  function addVariant(id, baseId, name, eq) {
+    const b = BY[baseId]; if (!b || BY[id]) return;
+    const v = Object.assign({}, b, { id, n: name, eq: eq || 'band', req: [], t: 1, img: b.img || baseId, variant: baseId });
+    DB.push(v); BY[id] = v;
+  }
+  function loadDb(list, custom) {
+    DB = list.slice(); BY = {}; DB.forEach(e => { BY[e.id] = e; });
+    VARIANTS.forEach(v => addVariant(v[0], v[1], v[2]));
+    (custom || []).forEach(c => addVariant(c.id, c.base, c.n, c.eq));
+  }
   const ex = id => BY[id];
-  const img = (id, n) => 'img/' + id + '__' + (n || 0) + '.webp';
+  const img = (id, n) => 'img/' + ((BY[id] && BY[id].img) || id) + '__' + (n || 0) + '.webp';
 
   const REP_STYLE = { lower: { lo: -3, hi: -3, label: 'Lower (heavier)' }, standard: { lo: 0, hi: 0, label: 'Standard' }, higher: { lo: 3, hi: 3, label: 'Higher' }, max: { lo: 6, hi: 8, label: 'Very high' } };
   function involvement(e) {
@@ -372,7 +390,7 @@
 
   window.Engine = {
     MUSCLES, MAJOR, EQUIPMENT, GOALS, REP_STYLE, TEMPLATES, SPLIT_LABEL, DAY, H,
-    loadDb, ex, img, involvement, all: () => DB,
+    loadDb, addVariant, ex, img, involvement, all: () => DB,
     readiness, muscleFatigue, setEffort, estRpeFromVloss,
     generatePlan, cardioDays, autoSplit, alternatives, candidates, scheme, itemMinutes, hasEquip,
     exHistory, implCount, suggest, detectPRs, sessionStats, kcal, weeklyMuscleSets, e1rm, increment,

@@ -123,7 +123,7 @@
 
   function quickRow() {
     const t = window.Energy.today(S());
-    return '<div class="row wrap" style="gap:8px"><button class="btn" data-a="logCardio">🏃 Log cardio</button><button class="btn" data-a="planSeg" data-s="addons">🧱 Add-ons</button><button class="btn" data-a="logBody">⚖️ Log body</button><button class="btn ghost" data-a="progSeg" data-s="energy">🔥 ' + t.total.toLocaleString() + ' kcal today</button></div>';
+    return '<div class="row wrap" style="gap:8px"><button class="btn primary" data-a="quickLog">⚡ Quick log</button><button class="btn" data-a="logCardio">🏃 Log cardio</button><button class="btn" data-a="planSeg" data-s="addons">🧱 Add-ons</button><button class="btn" data-a="logBody">⚖️ Log body</button><button class="btn ghost" data-a="progSeg" data-s="energy">🔥 ' + t.total.toLocaleString() + ' kcal today</button></div>';
   }
   function extrasRow() {
     const st = S(); let h = '';
@@ -260,7 +260,7 @@
     h += '<div class="card"><div class="card-h"><h3>History</h3><span class="small muted">' + ss.length + ' sessions</span></div>';
     ss.slice(0, 40).forEach(s => {
       const x = E.sessionStats(s);
-      h += '<button class="exrow" data-a="session" data-id="' + s.id + '"><div class="thumb" style="width:48px;height:48px;background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center"><span class="num" style="font-size:20px;line-height:1">' + new Date(s.date).getDate() + '</span><span class="tiny muted">' + new Date(s.date).toLocaleDateString(undefined, { month: 'short' }).toUpperCase() + '</span></div><div class="grow"><div class="nm">' + esc(s.title) + '</div><div class="sub">' + x.sets + ' sets · ' + F.fmtVol(x.vol) + ' ' + (s.u || F.u()) + ' · ' + x.dur + ' min' + (x.hrAvg ? ' · ♥ ' + x.hrAvg : '') + '</div></div>' + ((s.prs || []).length ? '<span class="tag gold">' + s.prs.length + ' PR</span>' : '') + '<span class="tag">' + (s.energy ? s.energy.total + ' kcal' : '+' + (s.xp || 0)) + '</span></button>';
+      h += '<button class="exrow" data-a="session" data-id="' + s.id + '"><div class="thumb" style="width:48px;height:48px;background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center"><span class="num" style="font-size:20px;line-height:1">' + new Date(s.date).getDate() + '</span><span class="tiny muted">' + new Date(s.date).toLocaleDateString(undefined, { month: 'short' }).toUpperCase() + '</span></div><div class="grow"><div class="nm">' + esc(s.title) + '</div><div class="sub">' + x.sets + ' sets · ' + F.fmtVol(x.vol) + ' ' + (s.u || F.u()) + ' · ' + x.dur + ' min' + (x.hrAvg ? ' · ♥ ' + x.hrAvg : '') + '</div></div>' + ((s.prs || []).length ? '<span class="tag gold">' + s.prs.length + ' PR</span>' : '') + (s.oneoff ? '<span class="tag accent">Quick</span>' : '') + '<span class="tag">' + (s.energy ? s.energy.total + ' kcal' : '+' + (s.xp || 0)) + '</span></button>';
     });
     return h + '</div></div>';
   };

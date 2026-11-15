@@ -12,7 +12,7 @@
     const items = day.items.map(it => {
       const sug = E.suggest(st.sessions, it, F.u(), st);
       const e = E.ex(it.exId);
-      const ps = window.Load && !opts.addon ? window.Load.prescribeSets(st, it, fat) : { sets: it.sets, why: [] };
+      const ps = window.Load && !opts.addon && !opts.oneoff ? window.Load.prescribeSets(st, it, fat) : { sets: it.sets, why: [] };
       let sets = ps.sets; const why = ps.why.slice();
       const pmF = e ? Math.max(...e.pm.map(m => fat[m] || 0)) : 0;
       let adapted = false;
@@ -24,7 +24,7 @@
         sets: Array.from({ length: sets }, () => ({ w: it.unit === 'sec' ? null : w, r: it.unit === 'sec' ? it.repMax : sug.r, done: false })),
       };
     });
-    return { id: 's' + Date.now().toString(36), date: Date.now(), title: day.title, dayIdx: opts.dayIdx, planned: !!opts.planned, addon: opts.addon || null, u: F.u(), items, cur: 0, hr: [], rest: null, watch: { reps: 0, tempo: [], peaks: [] }, setStart: Date.now() };
+    return { id: 's' + Date.now().toString(36), date: Date.now(), title: day.title, dayIdx: opts.dayIdx, planned: !!opts.planned, addon: opts.addon || null, oneoff: !!opts.oneoff, u: F.u(), items, cur: 0, hr: [], rest: null, watch: { reps: 0, tempo: [], peaks: [] }, setStart: Date.now() };
   };
 
   F.startWorkout = (dayIdx, opts) => {
@@ -67,6 +67,7 @@
     it.sets.slice(+d.j + 1).forEach(x => { if (!x.done) { x.w = s.w; x.wEdited = true; } });
     F.save(); F.render();
   };
+  A.bandStep = d => { const it = S().active.items[+d.i]; const s = it.sets[+d.j]; s.band = Math.max(0, Math.min(F.BANDS.length - 1, (s.band != null ? s.band : 2) + (+d.dir))); it.sets.slice(+d.j + 1).forEach(x => { if (!x.done) x.band = s.band; }); F.save(); F.render(); };
   A.rStep = d => {
     const it = S().active.items[+d.i]; const s = it.sets[+d.j];
     s.r = Math.max(0, (s.r || 0) + (+d.dir)); s.rEdited = true; F.save(); F.render();
@@ -98,6 +99,7 @@
   function completeSet(i, j, fromWatch) {
     const a = S().active; const it = a.items[i]; const s = it.sets[j];
     if (s.w == null && E.ex(it.exId).eq !== 'bodyweight' && E.ex(it.exId).eq !== 'band') s.w = 0;
+    if (E.ex(it.exId).eq === 'band' && s.band == null) s.band = 2;
     if (!s.r) s.r = a.watch.reps || it.repMin;
     s.done = true; s.t = Date.now();
     // Heart-rate during the set
@@ -234,7 +236,7 @@
     a.end = Date.now(); a.rest = null;
     // keep only exercises with done sets
     a.items = a.items.filter(it => it.sets.some(s => s.done)).map(it => ({ exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, unit: it.unit, alias: it.alias, feel: it.feel || null, sets: it.sets.filter(s => s.done).map(s => { const o = Object.assign({}, s); delete o.rEdited; return o; }) }));
-    const session = { id: a.id, date: a.date, end: a.end, title: a.title, dayIdx: a.dayIdx, planned: a.planned, addon: a.addon, u: a.u, items: a.items, hr: a.hr, hrSource: a.hr.length ? 'watch' : null, synced: {} };
+    const session = { id: a.id, date: a.date, end: a.end, title: a.title, dayIdx: a.dayIdx, planned: a.planned, addon: a.addon, oneoff: a.oneoff || undefined, u: a.u, items: a.items, hr: a.hr, hrSource: a.hr.length ? 'watch' : null, synced: {} };
     if (!session.items.length) { st.active = null; F.save(true); F.UI.stack = []; F.UI.sheet = null; F.render(); F.syncWatch(); F.toast('No sets logged — workout discarded'); return; }
     session.prs = E.detectPRs(st.sessions, session);
     session.energy = window.Energy.strengthEnergy(session, st);

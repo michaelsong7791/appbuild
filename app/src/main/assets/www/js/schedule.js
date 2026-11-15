@@ -38,7 +38,7 @@
     const perWeek = Math.min(p.perWeek || avail.size, avail.size || 7);
     const maxConsec = p.experience === 'beginner' ? 2 : 3;
     const nT = plan.days.length;
-    const real = st.sessions.filter(s => !s.addon);
+    const real = st.sessions.filter(s => !s.addon && !s.oneoff);
     const liftDays = new Set(real.map(s => E().startOfDay(s.date)));
     const lastDone = {}; real.forEach(s => { if (s.dayIdx != null) lastDone[s.dayIdx] = Math.max(lastDone[s.dayIdx] || 0, s.date); });
     const lastIdx = (() => { const r = real.filter(s => s.dayIdx != null).sort((a, b) => b.date - a.date)[0]; return r ? r.dayIdx : null; })();
