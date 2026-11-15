@@ -218,7 +218,7 @@
   function detail(e) {
     if (!e) return [];
     if (CACHE[e.id]) return CACHE[e.id];
-    let m = rules(e) || generic(e);
+    let m = e.dm ? Object.assign({}, e.dm) : (rules(e) || generic(e));
     // Make sure every muscle the database lists as involved shows up (as at least a stabiliser).
     const groupsIn = new Set(Object.keys(m).filter(k => m[k] > 0 && SUB[k]).map(k => SUB[k][1]));
     e.pm.concat(e.sm).forEach(g => { if (!groupsIn.has(g) && GROUP_DEFAULT[g]) { const d = GROUP_DEFAULT[g]; for (const k in d) m[k] = (m[k] || 0) + d[k] * (e.pm.includes(g) ? 12 : 4); } });

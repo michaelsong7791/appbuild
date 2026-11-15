@@ -66,6 +66,56 @@
         { t: 'Full flow', items: [['Upward_Stretch', 1, 30, 's', 5, 'Mountain reach'], ['Inchworm', 2, 5, 'r', 10, 'Walk-out flow'], ['Kneeling_Hip_Flexor', 2, 45, 's', 5, 'Low lunge'], ['Side_Bridge', 2, 30, 's', 10, 'Side plank'], ['Pelvic_Tilt_Into_Bridge', 2, 10, 'r', 5, 'Bridge flow'], ['Childs_Pose', 1, 90, 's', 5, 'Resting pose']] },
       ],
     },
+    {
+      id: 'home', name: 'No-Equipment Home', icon: '🏠', color: '#2fd3a8', min: 25, level: 'All levels',
+      desc: 'Seven full-body sessions with zero equipment — just floor space and a chair. Perfect for travel or busy days.',
+      sessions: [
+        { t: 'Foundations', items: [['x_jumping_jack', 2, 40, 's', 20], ['Bodyweight_Squat', 3, 15, 'r', 45], ['Pushups', 3, 10, 'r', 60], ['Butt_Lift_Bridge', 3, 15, 'r', 45], ['Plank', 2, 40, 's', 30]] },
+        { t: 'Lower body', items: [['x_high_knees', 2, 30, 's', 20], ['Bodyweight_Walking_Lunge', 3, 12, 'r', 45], ['Single_Leg_Glute_Bridge', 3, 12, 'r', 45], ['x_wall_sit', 3, 40, 's', 45], ['x_calf_raise_bw', 3, 20, 'r', 30]] },
+        { t: 'Upper body', items: [['Pushups', 3, 12, 'r', 60], ['x_pike_pushup', 3, 8, 'r', 60], ['Bench_Dips', 3, 12, 'r', 60], ['x_plank_tap', 3, 20, 'r', 30], ['Superman', 2, 30, 's', 30]] },
+        { t: 'Conditioning', items: [['x_burpee', 4, 8, 'r', 45], ['Mountain_Climbers', 4, 30, 's', 30], ['x_skater_jump', 3, 20, 'r', 30], ['Freehand_Jump_Squat', 3, 12, 'r', 45]] },
+        { t: 'Core & posture', items: [['x_bird_dog', 3, 10, 'r', 30], ['x_hollow_hold', 3, 25, 's', 30], ['Side_Bridge', 2, 30, 's', 20], ['x_v_up', 3, 10, 'r', 45], ['Superman', 3, 12, 'r', 30]] },
+        { t: 'Full body', items: [['x_bear_crawl', 3, 30, 's', 45], ['Push-Ups_With_Feet_Elevated', 3, 10, 'r', 60], ['Bodyweight_Squat', 3, 20, 'r', 45], ['x_crab_walk', 3, 30, 's', 45], ['Plank', 2, 60, 's', 30]] },
+        { t: 'Final challenge', items: [['x_burpee', 1, 20, 'r', 60], ['Pushups', 2, 20, 'r', 60], ['Bodyweight_Squat', 2, 30, 'r', 45], ['x_wall_sit', 1, 90, 's', 60], ['Plank', 1, 90, 's', 60]] },
+      ],
+    },
+    {
+      id: 'core2', name: 'Core 2.0', icon: '🔥', color: '#ff4a4a', min: 15, level: 'Intermediate → advanced',
+      desc: 'Gymnast-style core: hollow body, V-ups, hanging work, dragon flags and L-sits. For after Core Crusher.',
+      sessions: [
+        { t: 'Hollow basics', items: [['x_hollow_hold', 3, 30, 's', 30], ['x_hollow_rock', 3, 15, 'r', 30], ['x_plank_tap', 3, 20, 'r', 30], ['Side_Bridge', 2, 40, 's', 20]] },
+        { t: 'Hanging', items: [['x_hanging_knee', 3, 12, 'r', 45], ['Hanging_Leg_Raise', 3, 8, 'r', 60], ['x_dead_hang', 2, 40, 's', 45], ['x_hollow_hold', 2, 40, 's', 30]] },
+        { t: 'Dynamic', items: [['x_v_up', 3, 12, 'r', 45], ['Russian_Twist', 3, 30, 'r', 30], ['Mountain_Climbers', 3, 40, 's', 30], ['x_hollow_rock', 3, 20, 'r', 30]] },
+        { t: 'Anti-extension', items: [['Ab_Roller', 3, 8, 'r', 60], ['x_bird_dog', 3, 12, 'r', 30], ['Plank', 2, 75, 's', 30], ['x_dragon_flag', 3, 3, 'r', 90]] },
+        { t: 'Compression', items: [['x_l_sit', 4, 10, 's', 45], ['x_v_up', 3, 15, 'r', 45], ['x_toes_to_bar', 3, 5, 'r', 90], ['x_hollow_hold', 2, 45, 's', 30]] },
+        { t: 'Test day', items: [['x_hollow_hold', 1, 60, 's', 60], ['x_toes_to_bar', 2, 8, 'r', 90], ['x_dragon_flag', 2, 5, 'r', 90], ['x_l_sit', 2, 20, 's', 60]] },
+      ],
+    },
+    {
+      id: 'plyo', name: 'Plyo Power', icon: '⚡', color: '#f5b83d', min: 20, level: 'Intermediate',
+      desc: 'Jumps, bounds and explosive push-ups to build power and athleticism. Land softly; quality over quantity.',
+      sessions: [
+        { t: 'Landing mechanics', items: [['x_jumping_jack', 2, 40, 's', 20], ['Freehand_Jump_Squat', 3, 8, 'r', 60], ['Standing_Long_Jump', 3, 5, 'r', 60], ['x_skater_jump', 3, 12, 'r', 45]] },
+        { t: 'Vertical', items: [['Knee_Tuck_Jump', 4, 6, 'r', 60], ['Rocket_Jump', 3, 8, 'r', 60], ['Split_Jump', 3, 10, 'r', 60], ['x_calf_raise_bw', 2, 20, 'r', 30]] },
+        { t: 'Lateral', items: [['Lateral_Bound', 4, 8, 'r', 60], ['x_skater_jump', 3, 16, 'r', 45], ['Single-Leg_Lateral_Hop', 3, 8, 'r', 60], ['x_high_knees', 3, 30, 's', 30]] },
+        { t: 'Upper power', items: [['Plyo_Push-up', 4, 6, 'r', 75], ['x_burpee', 3, 8, 'r', 60], ['Pushups', 2, 15, 'r', 60], ['Mountain_Climbers', 3, 30, 's', 30]] },
+        { t: 'Combo', items: [['x_burpee', 4, 10, 'r', 60], ['Knee_Tuck_Jump', 3, 8, 'r', 60], ['Standing_Long_Jump', 3, 6, 'r', 60], ['Plyo_Push-up', 3, 6, 'r', 75]] },
+        { t: 'Power test', items: [['Standing_Long_Jump', 3, 3, 'r', 90], ['Knee_Tuck_Jump', 2, 12, 'r', 90], ['x_burpee', 1, 25, 'r', 60], ['Lateral_Bound', 2, 10, 'r', 60]] },
+      ],
+    },
+    {
+      id: 'skills', name: 'Calisthenics Skills', icon: '🤸', color: '#6aa8ff', min: 30, level: 'Intermediate → advanced',
+      desc: 'Seven sessions working toward pull-ups, pistol squats, L-sits and handstand push-ups. Pairs with the Skills ladders.',
+      sessions: [
+        { t: 'Pull foundations', items: [['x_dead_hang', 3, 30, 's', 45], ['Scapular_Pull-Up', 3, 8, 'r', 45], ['Inverted_Row', 3, 10, 'r', 60], ['Band_Assisted_Pull-Up', 3, 6, 'r', 90]] },
+        { t: 'Push foundations', items: [['Pushups', 3, 12, 'r', 60], ['x_pike_pushup', 3, 8, 'r', 75], ['Dips_-_Triceps_Version', 3, 6, 'r', 90], ['x_plank_tap', 2, 20, 'r', 30]] },
+        { t: 'Single leg', items: [['Bodyweight_Walking_Lunge', 3, 12, 'r', 45], ['x_wall_sit', 2, 60, 's', 45], ['x_pistol_squat', 4, 3, 'r', 90], ['Single_Leg_Glute_Bridge', 3, 12, 'r', 45]] },
+        { t: 'Compression', items: [['x_hollow_hold', 3, 30, 's', 30], ['x_l_sit', 5, 8, 's', 45], ['x_hanging_knee', 3, 10, 'r', 60], ['x_v_up', 3, 10, 'r', 45]] },
+        { t: 'Strict pulling', items: [['Chin-Up', 4, 5, 'r', 120], ['Pullups', 3, 5, 'r', 120], ['Inverted_Row', 2, 12, 'r', 60], ['x_dead_hang', 2, 45, 's', 45]] },
+        { t: 'Inversions', items: [['x_pike_pushup', 3, 10, 'r', 75], ['x_wall_handstand', 4, 20, 's', 60], ['x_crab_walk', 2, 30, 's', 45], ['x_hollow_hold', 2, 40, 's', 30]] },
+        { t: 'Skill test', items: [['Pullups', 1, 10, 'r', 120], ['x_pistol_squat', 2, 5, 'r', 120], ['x_l_sit', 2, 15, 's', 60], ['x_wall_handstand', 1, 45, 's', 60], ['Muscle_Up', 3, 1, 'r', 120]] },
+      ],
+    },
   ];
   window.ADDON_IDS = Array.from(new Set(P.flatMap(p => p.sessions.flatMap(s => s.items.map(i => i[0])))));
 })();

@@ -247,6 +247,7 @@
     st.game.xp += xp.total;
     st.sessions.push(session); st.active = null;
     G.addMuscleXp(st, session);
+    if (F.checkSkills) session.skills = F.checkSkills(st).map(x => x.l.id + ':' + x.i);
     session.newAch = G.checkAchievements(st, session).map(x => x.id);
     session.quests = G.claimQuests(st).map(q => q.id);
     const after = G.levelOf(st.game.xp).level;

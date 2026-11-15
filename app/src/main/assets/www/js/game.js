@@ -84,6 +84,8 @@
     { id: 'cardio10', icon: '🫀', name: 'Engine Builder', desc: 'Log 10 cardio sessions', test: (st) => (st.cardio || []).length >= 10 },
     { id: 'addon', icon: '🎓', name: 'Program Graduate', desc: 'Finish every session of an add-on program', test: (st) => (window.ADDONS || []).some(p => { const pr = (st.addons || {})[p.id]; return pr && pr.done.length >= p.sessions.length; }) },
     { id: 'body5', icon: '📏', name: 'Know Thyself', desc: 'Log body measurements 5 times', test: (st) => (st.body || []).length >= 5 },
+    { id: 'skill1', icon: '🧗', name: 'Skill Unlocked', desc: 'Unlock 3 calisthenics skill steps', test: (st) => Object.values((st.game || {}).skills || {}).reduce((a, v) => a + v + 1, 0) >= 3 },
+    { id: 'skillmax', icon: '🥋', name: 'Calisthenics Master', desc: 'Complete a whole skill ladder', test: (st) => window.F && F.skillsDone && F.skillsDone(st) },
     { id: 'bwbench', icon: '🏋️', name: 'Bodyweight Bench', desc: 'Bench press your bodyweight', test: (st) => { const bw = st.profile.bodyweight || 9999; return st.sessions.some(s => s.items.some(it => /bench press/i.test((E().ex(it.exId) || {}).n || '') && it.sets.some(x => x.done && x.w >= bw && x.r >= 1))); } },
   ];
 

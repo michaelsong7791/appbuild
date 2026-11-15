@@ -9,7 +9,7 @@
   F.BANDS = BANDS;
   const isBand = e => e && e.eq === 'band';
   const isTimed = e => e && (e.f === 'stat' || e.cat === 'st');
-  const QUICK_PICKS = ['v_band_curl', 'Pushups', 'Plank', 'Bodyweight_Squat', 'Pullups', 'Dumbbell_Bicep_Curl', 'Crunches', 'v_band_facepull', 'Lateral_Raise_-_With_Bands', 'Bench_Dips', 'Dumbbell_Lunges', 'Hamstring_Stretch'];
+  const QUICK_PICKS = ['v_band_curl', 'Pushups', 'Plank', 'x_burpee', 'Bodyweight_Squat', 'Pullups', 'x_hollow_hold', 'Crunches', 'x_jumping_jack', 'Mountain_Climbers', 'Bench_Dips', 'x_pike_pushup', 'v_band_facepull', 'Dumbbell_Bicep_Curl', 'x_wall_sit', 'Hamstring_Stretch'];
 
   function lastSetsFor(exId) {
     const h = E.exHistory(S().sessions, exId); if (!h.length) return null;
@@ -19,7 +19,7 @@
     const e = E.ex(exId); const last = lastSetsFor(exId);
     if (last) return { exId, sets: last.map(s => Object.assign({}, s)), rir: null };
     const timed = isTimed(e);
-    const sug = !timed && !isBand(e) && e.eq !== 'bodyweight' ? E.suggest(S().sessions, { exId, repMin: 10, repMax: 12, sets: 3 }, F.u(), S()) : null;
+    const sug = !timed && !E.noLoad(e) ? E.suggest(S().sessions, { exId, repMin: 10, repMax: 12, sets: 3 }, F.u(), S()) : null;
     return { exId, rir: null, sets: Array.from({ length: timed ? 2 : 3 }, () => ({ r: timed ? 30 : 12, w: sug && sug.w != null ? sug.w : null, band: isBand(e) ? 2 : undefined })) };
   }
   function recents() {
@@ -87,7 +87,7 @@
       it.sets.forEach((s, k) => {
         h += '<div class="row" style="gap:8px"><span class="num muted" style="width:18px;font-size:16px">' + (k + 1) + '</span>';
         if (band) h += '<div class="mini-step grow"><button data-a="qBand" data-i="' + i + '" data-k="' + k + '" data-d="-1">−</button><span class="grow" style="text-align:center">' + BANDS[s.band != null ? s.band : 2][0] + ' band</span><button data-a="qBand" data-i="' + i + '" data-k="' + k + '" data-d="1">+</button></div>';
-        else if (!timed && e.eq !== 'bodyweight') h += '<div class="mini-step grow"><button data-a="qW" data-i="' + i + '" data-k="' + k + '" data-d="-1">−</button><span class="grow" style="text-align:center">' + (s.w != null ? F.fmtW(s.w) : '0') + ' ' + F.u() + (pair ? ' ea' : '') + '</span><button data-a="qW" data-i="' + i + '" data-k="' + k + '" data-d="1">+</button></div>';
+        else if (!timed && !E.noLoad(e)) h += '<div class="mini-step grow"><button data-a="qW" data-i="' + i + '" data-k="' + k + '" data-d="-1">−</button><span class="grow" style="text-align:center">' + (s.w != null ? F.fmtW(s.w) : '0') + ' ' + F.u() + (pair ? ' ea' : '') + '</span><button data-a="qW" data-i="' + i + '" data-k="' + k + '" data-d="1">+</button></div>';
         h += '<div class="mini-step grow"><button data-a="qR" data-i="' + i + '" data-k="' + k + '" data-d="-1">−</button><span class="grow" style="text-align:center">' + s.r + (timed ? ' s' : ' reps') + '</span><button data-a="qR" data-i="' + i + '" data-k="' + k + '" data-d="1">+</button></div>';
         h += (it.sets.length > 1 ? '<button class="icon-btn sm" data-a="qDelSet" data-i="' + i + '" data-k="' + k + '" aria-label="Remove set">' + I.minus + '</button>' : '') + '</div>';
       });
@@ -129,7 +129,7 @@
     let t = start;
     const items = d.items.map(it => {
       const e = E.ex(it.exId);
-      return { exId: it.exId, repMin: it.sets[0].r, repMax: it.sets[0].r, rest: 60, unit: isTimed(e) ? 'sec' : undefined, sets: it.sets.map(s => { t += 60e3; const o = { r: s.r, done: true, t }; if (isBand(e)) { o.band = s.band != null ? s.band : 2; o.w = null; } else if (s.w != null && e.eq !== 'bodyweight' && !isTimed(e)) o.w = s.w; if (it.rir != null) o.rpe = 10 - it.rir; return o; }) };
+      return { exId: it.exId, repMin: it.sets[0].r, repMax: it.sets[0].r, rest: 60, unit: isTimed(e) ? 'sec' : undefined, sets: it.sets.map(s => { t += 60e3; const o = { r: s.r, done: true, t }; if (isBand(e)) { o.band = s.band != null ? s.band : 2; o.w = null; } else if (s.w != null && !E.noLoad(e) && !isTimed(e)) o.w = s.w; if (it.rir != null) o.rpe = 10 - it.rir; return o; }) };
     });
     const session = { id: 'q' + Date.now().toString(36), date: start, end, title: title(d), oneoff: true, u: F.u(), items, hr: [], synced: {} };
     session.prs = E.detectPRs(st.sessions, session);
@@ -138,6 +138,7 @@
     const xp = G.sessionXp(session, session.prs, false); session.xp = xp.total; session.xpLines = xp.lines; st.game.xp += xp.total;
     st.sessions.push(session); st.sessions.sort((a, b) => a.date - b.date);
     G.addMuscleXp(st, session);
+    if (F.checkSkills) F.checkSkills(st);
     session.newAch = G.checkAchievements(st, session).map(x => x.id);
     G.claimQuests(st);
     F.UI.qDraft = null; F.UI.sheet = null; F.save(true); if (window.Schedule) window.Schedule.invalidate(); F.render();

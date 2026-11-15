@@ -204,16 +204,31 @@
   A.regen = () => { if (!confirm('Pick a fresh set of exercises for every day? Your schedule and goals stay the same.')) return; F.regenerate(false); F.toast('New exercise selection generated'); F.render(); };
 
   // ---------- LIBRARY ----------
+  const BWQ = ['bodyweight', 'suspension', 'ball'];
+  const LIB_CATS = [
+    ['all', 'All', () => true],
+    ['weights', '🏋️ Weights', e => e.cat === 's' && !BWQ.includes(e.eq)],
+    ['bodyweight', '🤸 Bodyweight', e => (e.cat === 's' || e.cat === 'p') && BWQ.includes(e.eq)],
+    ['cali', '💪 Calisthenics', e => e.cat === 's' && BWQ.includes(e.eq) && e.mech === 'c' && !e.pm.includes('abdominals')],
+    ['core', '🧱 Core', e => e.cat !== 'st' && (e.pm.includes('abdominals') || (e.pm.includes('lower back') && e.eq === 'bodyweight'))],
+    ['p', '⚡ Plyometric', e => e.cat === 'p'],
+    ['st', '🧘 Mobility', e => e.cat === 'st'],
+  ];
+  function libList() {
+    const L = F.UI.lib; const st = S(); const cat = LIB_CATS.find(c => c[0] === (L.cat || 'all')) || LIB_CATS[0];
+    let list = E.all().filter(e => cat[2](e) && (!L.m || e.pm.includes(L.m)) && (!L.mine || E.hasEquip(e, st.profile.equipment)) && (!L.noeq || BWQ.includes(e.eq) || e.cat === 'st' && e.eq === 'bodyweight'));
+    if (L.q) { const q = L.q.toLowerCase(); list = list.filter(e => e.n.toLowerCase().includes(q) || E.EQUIPMENT[e.eq].toLowerCase().includes(q) || e.pm.some(m => F.mLabel(m).toLowerCase().includes(q))); }
+    return list.sort((a, b) => b.t - a.t || a.n.localeCompare(b.n));
+  }
   V.library = () => {
-    const L = F.UI.lib; const st = S();
+    const L = F.UI.lib;
+    let h = '<div class="page"><div class="row between"><h1>Exercises</h1><div class="seg" style="width:220px"><button class="' + (L.view !== 'skills' ? 'on' : '') + '" data-a="libView" data-v="list">Library</button><button class="' + (L.view === 'skills' ? 'on' : '') + '" data-a="libView" data-v="skills">Skills</button></div></div>';
+    if (L.view === 'skills') return h + F.skillsView() + '</div>';
     const groups = ['chest', 'shoulders', 'triceps', 'biceps', 'lats', 'middle back', 'traps', 'forearms', 'abdominals', 'quadriceps', 'hamstrings', 'glutes', 'calves', 'lower back', 'adductors', 'abductors'];
-    let list = E.all().filter(e => (L.cat ? e.cat === L.cat : (!e.cat || e.cat === 's')) && (!L.m || e.pm.includes(L.m) || (L.sec && e.sm.includes(L.m))) && (L.cat || !L.mine || E.hasEquip(e, st.profile.equipment)));
-    if (L.q) { const q = L.q.toLowerCase(); list = list.filter(e => e.n.toLowerCase().includes(q) || e.eq.includes(q)); }
-    list.sort((a, b) => b.t - a.t || a.n.localeCompare(b.n));
-    let h = '<div class="page"><h1>Exercises</h1>';
+    const list = libList();
     h += '<div class="row"><div class="grow" style="position:relative"><input class="input" style="padding-left:40px" placeholder="Search ' + E.all().length + ' exercises" value="' + esc(L.q) + '" data-in="libQ"><span style="position:absolute;left:12px;top:13px;width:20px;color:var(--dim)">' + I.search + '</span></div><button class="chip ' + (L.mine ? 'on' : '') + '" style="height:46px;border-radius:12px" data-a="libMine">My gear</button></div>';
-    h += '<div class="chips"><button class="chip ' + (!L.m ? 'on' : '') + '" data-a="libM" data-m="">All</button>' + groups.map(m => '<button class="chip ' + (L.m === m ? 'on' : '') + '" data-a="libM" data-m="' + m + '">' + F.mLabel(m) + '</button>').join('') + '</div>';
-    h += '<div class="chips">' + [['', 'Strength'], ['st', 'Stretching'], ['p', 'Plyometric'], ['c', 'Cardio']].map(([k, l]) => '<button class="chip ' + ((L.cat || '') === k ? 'on' : '') + '" data-a="libCat" data-c="' + k + '">' + l + '</button>').join('') + '</div>';
+    h += '<div class="chips">' + LIB_CATS.map(([k, l]) => '<button class="chip ' + ((L.cat || 'all') === k ? 'on' : '') + '" data-a="libCat" data-c="' + k + '">' + l + '</button>').join('') + '<button class="chip ' + (L.noeq ? 'on' : '') + '" data-a="libNoEq">🚫 No equipment</button></div>';
+    h += '<div class="chips"><button class="chip ' + (!L.m ? 'on' : '') + '" data-a="libM" data-m="">All muscles</button>' + groups.map(m => '<button class="chip ' + (L.m === m ? 'on' : '') + '" data-a="libM" data-m="' + m + '">' + F.mLabel(m) + '</button>').join('') + '</div>';
     h += '<div class="small muted">' + list.length + ' results</div><div class="card tight" id="lib-list" style="padding-top:2px;padding-bottom:2px">';
     h += libRows(list.slice(0, 80));
     if (list.length > 80) h += '<button class="btn ghost block" style="margin:10px 0" data-a="libMore">Show all ' + list.length + '</button>';
@@ -227,15 +242,11 @@
   let libT = null;
   A.libQ = (d, el) => { F.UI.lib.q = el.value; clearTimeout(libT); libT = setTimeout(() => { F.render(); const i = document.querySelector('[data-in="libQ"]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 220); };
   A.libM = d => { F.UI.lib.m = d.m || null; F.render(); };
-  A.libCat = d => { F.UI.lib.cat = d.c || null; F.render(); };
+  A.libCat = d => { F.UI.lib.cat = d.c === 'all' ? null : d.c; F.render(); };
   A.libMine = () => { F.UI.lib.mine = !F.UI.lib.mine; F.render(); };
-  A.libMore = (d, el) => {
-    const L = F.UI.lib; const st = S();
-    let list = E.all().filter(e => (!L.m || e.pm.includes(L.m)) && (!L.mine || E.hasEquip(e, st.profile.equipment)));
-    if (L.q) { const q = L.q.toLowerCase(); list = list.filter(e => e.n.toLowerCase().includes(q)); }
-    list.sort((a, b) => b.t - a.t || a.n.localeCompare(b.n));
-    el.insertAdjacentHTML('beforebegin', libRows(list.slice(80))); el.remove();
-  };
+  A.libMore = (d, el) => { el.insertAdjacentHTML('beforebegin', libRows(libList().slice(80))); el.remove(); };
+  A.libView = d => { F.UI.lib.view = d.v; F.render(); };
+  A.libNoEq = () => { F.UI.lib.noeq = !F.UI.lib.noeq; F.render(); };
 
   // ---------- PROGRESS ----------
   V.progress = () => {

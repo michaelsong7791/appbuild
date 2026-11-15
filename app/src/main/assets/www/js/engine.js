@@ -29,7 +29,8 @@
   const EQUIPMENT = {
     barbell: 'Barbell', dumbbell: 'Dumbbells', cable: 'Cable station', machine: 'Machines',
     kettlebell: 'Kettlebells', band: 'Resistance bands', ezbar: 'EZ bar', bodyweight: 'Bodyweight',
-    bench: 'Bench', pullupbar: 'Pull-up bar', smith: 'Smith machine',
+    bench: 'Bench / box', pullupbar: 'Pull-up / dip bar', smith: 'Smith machine',
+    ball: 'Stability ball', medball: 'Medicine ball', foamroll: 'Foam roller', suspension: 'Suspension trainer', ropes: 'Battle ropes',
   };
 
   const GOALS = {
@@ -172,7 +173,7 @@
   }
 
   function hasEquip(e, eq) {
-    const set = new Set(eq);
+    const set = new Set(eq); set.add('bodyweight');
     if (!set.has(e.eq)) return false;
     return e.req.every(r => r === 'smith' ? (set.has('smith') || set.has('machine')) : set.has(r));
   }
@@ -185,9 +186,13 @@
     const kw = slot.kw.map(k => k.toLowerCase());
     const blocked = new Set(prof.blocked || []); const fav = new Set(prof.favorites || []);
     const r = opts.rand || Math.random;
-    return DB.filter(e => (!e.cat || e.cat === 's') && e.pm.includes(slot.m) && hasEquip(e, eq) && !blocked.has(e.id))
+    const style = prof.style || 'weights';
+    return DB.filter(e => (!e.cat || e.cat === 's') && !e.variant && e.pm.includes(slot.m) && hasEquip(e, eq) && !blocked.has(e.id) && (e.lv !== 'e' || lvl === 'advanced') && (style !== 'bodyweight' || ['bodyweight', 'band', 'suspension', 'ball'].includes(e.eq)))
       .map(e => {
         const n = e.n.toLowerCase(); let sc = e.t * 12;
+        const bw = ['bodyweight', 'suspension', 'ball'].includes(e.eq);
+        if (style === 'mixed' && bw) sc += 10;
+        if (style === 'weights' && bw && e.eq !== 'band') sc -= 6;
         if (kw.some(k => n.includes(k))) sc += 16;
         if (slot.pat !== 'iso' && e.pat === slot.pat) sc += 10;
         if (slot.pat !== 'iso' && e.mech === 'c') sc += 6;
@@ -309,7 +314,7 @@
     const misses = work.filter(s => s.r < item.repMin).length;
     const inc = increment(e, units);
     if (e.f === 'stat' && !top) { const bestR = Math.max(...last.map(s => s.r || 0)); return { w: null, r: Math.min(bestR + 5, item.repMax + 30), note: 'Hold 5 seconds longer than last time.' }; }
-    if (e.eq === 'bodyweight' || e.eq === 'band' || inc === 0) {
+    if (noLoad(e) || inc === 0) {
       const bestR = Math.max(...last.map(s => s.r || 0));
       return { w: top || null, r: Math.min(bestR + 1, item.repMax + 5), note: allTop ? 'You owned it last time — add reps or slow the tempo.' : 'Aim for one more rep than last time.' };
     }
@@ -343,6 +348,8 @@
 
   /** 2 when an exercise uses a pair of dumbbells/kettlebells (logged weight is per hand), else 1. */
   const SINGLE = /one-arm|one arm|single|goblet|swing|pullover|concentration|windmill|turkish|halo|figure 8|pass between|pirate|seated one|one-legged|one leg|lying one|bottoms-up|bottoms up|dumbbell squat to a bench|plie|spell caster|side bend|tricep extension -pronated|standing dumbbell triceps extension|seated triceps press|tate|around the worlds/i;
+  const NOLOAD = ['bodyweight', 'band', 'ball', 'suspension', 'foamroll', 'ropes', 'medball'];
+  function noLoad(e) { return !e || NOLOAD.includes(e.eq); }
   function implCount(e) { return e && (e.eq === 'dumbbell' || e.eq === 'kettlebell') && !SINGLE.test(e.n) ? 2 : 1; }
   function sessionStats(s) {
     let vol = 0, sets = 0, reps = 0; const mus = {};
@@ -393,7 +400,7 @@
     loadDb, addVariant, ex, img, involvement, all: () => DB,
     readiness, muscleFatigue, setEffort, estRpeFromVloss,
     generatePlan, cardioDays, autoSplit, alternatives, candidates, scheme, itemMinutes, hasEquip,
-    exHistory, implCount, suggest, detectPRs, sessionStats, kcal, weeklyMuscleSets, e1rm, increment,
+    exHistory, implCount, noLoad, suggest, detectPRs, sessionStats, kcal, weeklyMuscleSets, e1rm, increment,
     clamp, round, startOfWeek, startOfDay, isoWeek, toKg,
   };
 })();

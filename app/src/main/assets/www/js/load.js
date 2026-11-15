@@ -129,7 +129,7 @@
   /** Main entry: { w, r, note, basis, calib, e1rm, rir } — or null for exercises without external load. */
   function prescribe(st, item) {
     const e = E().ex(item.exId); if (!e) return null;
-    if (item.unit === 'sec' || e.f === 'stat' || e.eq === 'bodyweight' || e.eq === 'band' || e.cat === 'st') return null;
+    if (item.unit === 'sec' || e.f === 'stat' || E().noLoad(e) || e.cat === 'st') return null;
     const prof = st.profile; const units = prof.units || 'kg'; const rir = goalRir(prof);
     const repMin = item.repMin, repMax = item.repMax; const own = ownE1rm(st.sessions, e.id);
     const fit = (one, rirT) => {
@@ -171,7 +171,7 @@
   /** Re-tune the remaining sets of an exercise from a rated (or failed) set. Returns a message or null. */
   function autoregulate(st, it, j) {
     const e = E().ex(it.exId); const s = it.sets[j]; if (!e || !s || !s.done || !(s.w > 0) || !(s.r > 0)) return null;
-    if (e.eq === 'bodyweight' || e.eq === 'band') return null;
+    if (E().noLoad(e)) return null;
     const units = st.profile.units || 'kg'; const rirT = goalRir(st.profile);
     let r = rirOf(s); if (r == null) { if (s.r < it.repMin) r = 0; else return null; }
     const one = e1rm(s.w, s.r, r);
