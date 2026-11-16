@@ -231,4 +231,5 @@ for e in EX:
     r = {k: v for k, v in e.items() if k not in ('poses', 'prop', 'front')}
     out.append(r)
 json.dump(out, open('custom_ex.json', 'w'))
+json.dump([dict(id=e['id'], n=e['n'], poses=e['poses'], prop=e.get('prop'), front=bool(e.get('front')), single=len(e['poses']) == 1) for e in EX], open('poses.json', 'w'))
 print(len(out), 'custom exercises rendered')

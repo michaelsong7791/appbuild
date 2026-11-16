@@ -62,7 +62,11 @@
   F.clock = ms => { const s = Math.max(0, Math.floor(ms / 1000)); const m = Math.floor(s / 60); return (m >= 60 ? Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0') : m) + ':' + String(s % 60).padStart(2, '0'); };
   F.mLabel = m => (E.MUSCLES[m] || { label: m }).label;
   F.thumb = (id, lg) => '<div class="thumb' + (lg ? ' lg' : '') + '" style="background-image:url(' + E.img(id, 0) + ')"><div class="b" style="background-image:url(' + E.img(id, 1) + ')"></div></div>';
-  F.demo = (id, extra) => '<div class="demo"><img src="' + E.img(id, 0) + '" alt=""><img class="b" src="' + E.img(id, 1) + '" alt="">' + (extra || '') + '</div>';
+  F.demo = (id, extra) => {
+    const base = E.img(id, 0).replace(/^img\//, '').replace(/__0\.webp$/, '');
+    if (/^[xyp]_/.test(base)) return '<div class="demo"><img src="img/' + base + '__a.webp" alt="">' + (extra || '') + '</div>';
+    return '<div class="demo"><img src="' + E.img(id, 0) + '" alt=""><img class="b" src="' + E.img(id, 1) + '" alt="">' + (extra || '') + '</div>';
+  };
   F.toast = msg => { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2700); };
   F.smart = () => !!(S.profile && S.profile.smartSched !== false && window.Schedule);
   F.sched = () => F.smart() ? window.Schedule.compute(S) : null;
