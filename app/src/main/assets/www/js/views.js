@@ -7,11 +7,13 @@
 
   V.root = () => {
     const st = S();
-    if (!st.profile) return V.onboarding();
-    const top = F.top();
-    let html = '<div class="shell">' + nav() + '<main class="main" data-scroll="main">' + V[F.UI.tab]() + '</main></div>';
-    if (top) html += V.screen(top);
-    if (F.UI.sheet) html += '<div class="sheet-bg"><div class="sheet" data-scroll="sheet"><div class="grab"></div>' + V.sheet(F.UI.sheet) + '</div></div>';
+    // data-k keys let the DOM patcher keep unchanged parts on screen (no re-animation / flicker) and only
+    // animate when the view itself changes.
+    if (!st.profile) return '<div data-k="ob-' + (F.UI.obBuilding ? 'build' : F.UI.ob) + '">' + V.onboarding() + '</div>';
+    const top = F.top(); const sub = F.UI.tab === 'plan' ? F.UI.planSeg || '' : F.UI.tab === 'progress' ? F.UI.prog || '' : F.UI.tab === 'library' ? F.UI.lib.view || '' : '';
+    let html = '<div class="shell">' + nav() + '<main class="main" data-scroll="main" data-k="tab-' + F.UI.tab + '-' + sub + '">' + V[F.UI.tab]() + '</main></div>';
+    if (top) html += '<div data-k="scr-' + top.t + '-' + (top.id || top.idx || '') + '">' + V.screen(top) + '</div>';
+    if (F.UI.sheet) html += '<div class="sheet-bg" data-k="sheet-' + F.UI.sheet.t + '"><div class="sheet" data-scroll="sheet"><div class="grab"></div>' + V.sheet(F.UI.sheet) + '</div></div>';
     return html;
   };
 

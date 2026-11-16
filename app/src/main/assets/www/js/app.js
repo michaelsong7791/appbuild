@@ -106,7 +106,15 @@
     const scrolls = {};
     document.querySelectorAll('[data-scroll]').forEach(el => { scrolls[el.dataset.scroll] = el.scrollTop; });
     const key = UI.tab + '|' + UI.stack.map(x => x.t + (x.id || x.idx || '')).join('/');
-    root.innerHTML = F.views.root();
+    const html = F.views.root();
+    if (window.morphdom && root.firstChild) {
+      // Patch only what changed: unchanged nodes (demo animations, images, open overlays) stay put — no blinking.
+      window.morphdom(root, '<div id="root">' + html + '</div>', {
+        childrenOnly: true,
+        getNodeKey: n => (n.dataset && n.dataset.k) || n.id || undefined,
+        onBeforeElUpdated: (from, to) => !(from === document.activeElement && (from.tagName === 'INPUT' || from.tagName === 'TEXTAREA') && from.type !== 'checkbox') && !from.isEqualNode(to),
+      });
+    } else root.innerHTML = html;
     if (key === lastKey) document.querySelectorAll('[data-scroll]').forEach(el => { if (scrolls[el.dataset.scroll] != null) el.scrollTop = scrolls[el.dataset.scroll]; });
     lastKey = key;
     if (F.afterRender) F.afterRender();

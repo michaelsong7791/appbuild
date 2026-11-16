@@ -58,6 +58,7 @@
   function cur() { const a = S().active; return a && a.items[a.cur]; }
   function curSetIdx(it) { const i = it.sets.findIndex(s => !s.done); return i < 0 ? it.sets.length : i; }
   F.curSetIdx = curSetIdx;
+  F.liveHrNow = () => (liveHr && Date.now() - liveHrAt < 15000 ? liveHr : null);
 
   A.wStep = d => {
     const a = S().active; const it = a.items[+d.i]; const s = it.sets[+d.j]; const e = E.ex(it.exId);
