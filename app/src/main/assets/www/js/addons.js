@@ -4,7 +4,7 @@
   'use strict';
   const P = window.ADDONS = [
     {
-      id: 'core', name: 'Core Crusher', icon: '🧱', color: '#ff6a33', min: 12, level: 'All levels',
+      id: 'core', cat: 'Core', name: 'Core Crusher', icon: '🧱', color: '#ff6a33', min: 12, level: 'All levels',
       desc: 'Seven short ab & core sessions that build from stability to strength. Great as a 12-minute finisher.',
       sessions: [
         { t: 'Foundation', items: [['Crunches', 2, 15, 'r', 30], ['Plank', 2, 30, 's', 30], ['Dead_Bug', 2, 10, 'r', 30], ['Reverse_Crunch', 2, 12, 'r', 30]] },
@@ -17,7 +17,7 @@
       ],
     },
     {
-      id: 'cali', name: 'Calisthenics Foundations', icon: '🤸', color: '#2fd3a8', min: 25, level: 'Beginner → intermediate',
+      id: 'cali', cat: 'Calisthenics', name: 'Calisthenics Foundations', icon: '🤸', color: '#2fd3a8', min: 25, level: 'Beginner → intermediate',
       desc: 'Bodyweight strength: push-ups, pull-ups, dips, squats and core control. No gym needed beyond a bar.',
       sessions: [
         { t: 'Baseline', items: [['Pushups', 3, 10, 'r', 60], ['Inverted_Row', 3, 8, 'r', 60], ['Bodyweight_Squat', 3, 15, 'r', 45], ['Plank', 2, 30, 's', 30]] },
@@ -30,7 +30,7 @@
       ],
     },
     {
-      id: 'mobility', name: 'Mobility & Stretch', icon: '🧘', color: '#6aa8ff', min: 15, level: 'All levels',
+      id: 'mobility', cat: 'Mobility', name: 'Mobility & Stretch', icon: '🧘', color: '#6aa8ff', min: 15, level: 'All levels',
       desc: 'Six stretch & mobility sessions for hips, hamstrings, shoulders and spine. Ideal on rest days.',
       sessions: [
         { t: 'Hips', items: [['Kneeling_Hip_Flexor', 2, 40, 's', 10], ['Worlds_Greatest_Stretch', 2, 6, 'r', 10], ['Lying_Glute', 2, 40, 's', 10], ['Groin_and_Back_Stretch', 2, 40, 's', 10], ['Standing_Hip_Circles', 1, 10, 'r', 10]] },
@@ -42,7 +42,7 @@
       ],
     },
     {
-      id: 'bootcamp', name: 'Boot Camp', icon: '🎖️', color: '#f5b83d', min: 20, level: 'Intermediate',
+      id: 'bootcamp', cat: 'HIIT', name: 'Boot Camp', icon: '🎖️', color: '#f5b83d', min: 20, level: 'Intermediate',
       desc: 'Military-style conditioning: push-ups, sit-ups, jumps, crawls and sprints. Short rests, high output.',
       sessions: [
         { t: 'Day 1 · Basic', items: [['Star_Jump', 3, 30, 's', 20], ['Pushups', 3, 12, 'r', 30], ['Sit-Up', 3, 15, 'r', 30], ['Bodyweight_Squat', 3, 20, 'r', 30], ['Mountain_Climbers', 3, 30, 's', 30]] },
@@ -55,7 +55,7 @@
       ],
     },
     {
-      id: 'yoga', name: 'Yoga-Style Flow', icon: '🪷', color: '#c08bff', min: 18, level: 'All levels',
+      id: 'yoga', cat: 'Yoga', name: 'Yoga-Style Flow', icon: '🪷', color: '#c08bff', min: 18, level: 'All levels',
       desc: 'Six calm, pose-based flows for flexibility, balance and breathing. Hold each pose and breathe slowly.',
       sessions: [
         { t: 'Grounding', items: [['Childs_Pose', 1, 60, 's', 5, "Child's pose"], ['Cat_Stretch', 2, 8, 'r', 5, 'Cat–cow'], ['Upward_Stretch', 2, 30, 's', 5, 'Mountain reach'], ['Kneeling_Hip_Flexor', 2, 45, 's', 5, 'Low lunge'], ['Hug_Knees_To_Chest', 1, 60, 's', 5, 'Knees to chest']] },
@@ -67,7 +67,7 @@
       ],
     },
     {
-      id: 'home', name: 'No-Equipment Home', icon: '🏠', color: '#2fd3a8', min: 25, level: 'All levels',
+      id: 'home', cat: 'Bodyweight', name: 'No-Equipment Home', icon: '🏠', color: '#2fd3a8', min: 25, level: 'All levels',
       desc: 'Seven full-body sessions with zero equipment — just floor space and a chair. Perfect for travel or busy days.',
       sessions: [
         { t: 'Foundations', items: [['x_jumping_jack', 2, 40, 's', 20], ['Bodyweight_Squat', 3, 15, 'r', 45], ['Pushups', 3, 10, 'r', 60], ['Butt_Lift_Bridge', 3, 15, 'r', 45], ['Plank', 2, 40, 's', 30]] },
@@ -80,7 +80,7 @@
       ],
     },
     {
-      id: 'core2', name: 'Core 2.0', icon: '🔥', color: '#ff4a4a', min: 15, level: 'Intermediate → advanced',
+      id: 'core2', cat: 'Core', name: 'Core 2.0', icon: '🔥', color: '#ff4a4a', min: 15, level: 'Intermediate → advanced',
       desc: 'Gymnast-style core: hollow body, V-ups, hanging work, dragon flags and L-sits. For after Core Crusher.',
       sessions: [
         { t: 'Hollow basics', items: [['x_hollow_hold', 3, 30, 's', 30], ['x_hollow_rock', 3, 15, 'r', 30], ['x_plank_tap', 3, 20, 'r', 30], ['Side_Bridge', 2, 40, 's', 20]] },
@@ -92,7 +92,7 @@
       ],
     },
     {
-      id: 'plyo', name: 'Plyo Power', icon: '⚡', color: '#f5b83d', min: 20, level: 'Intermediate',
+      id: 'plyo', cat: 'Plyometrics', name: 'Plyo Power', icon: '⚡', color: '#f5b83d', min: 20, level: 'Intermediate',
       desc: 'Jumps, bounds and explosive push-ups to build power and athleticism. Land softly; quality over quantity.',
       sessions: [
         { t: 'Landing mechanics', items: [['x_jumping_jack', 2, 40, 's', 20], ['Freehand_Jump_Squat', 3, 8, 'r', 60], ['Standing_Long_Jump', 3, 5, 'r', 60], ['x_skater_jump', 3, 12, 'r', 45]] },
@@ -104,7 +104,7 @@
       ],
     },
     {
-      id: 'skills', name: 'Calisthenics Skills', icon: '🤸', color: '#6aa8ff', min: 30, level: 'Intermediate → advanced',
+      id: 'skills', cat: 'Calisthenics', name: 'Calisthenics Skills', icon: '🤸', color: '#6aa8ff', min: 30, level: 'Intermediate → advanced',
       desc: 'Seven sessions working toward pull-ups, pistol squats, L-sits and handstand push-ups. Pairs with the Skills ladders.',
       sessions: [
         { t: 'Pull foundations', items: [['x_dead_hang', 3, 30, 's', 45], ['Scapular_Pull-Up', 3, 8, 'r', 45], ['Inverted_Row', 3, 10, 'r', 60], ['Band_Assisted_Pull-Up', 3, 6, 'r', 90]] },
@@ -114,6 +114,161 @@
         { t: 'Strict pulling', items: [['Chin-Up', 4, 5, 'r', 120], ['Pullups', 3, 5, 'r', 120], ['Inverted_Row', 2, 12, 'r', 60], ['x_dead_hang', 2, 45, 's', 45]] },
         { t: 'Inversions', items: [['x_pike_pushup', 3, 10, 'r', 75], ['x_wall_handstand', 4, 20, 's', 60], ['x_crab_walk', 2, 30, 's', 45], ['x_hollow_hold', 2, 40, 's', 30]] },
         { t: 'Skill test', items: [['Pullups', 1, 10, 'r', 120], ['x_pistol_squat', 2, 5, 'r', 120], ['x_l_sit', 2, 15, 's', 60], ['x_wall_handstand', 1, 45, 's', 60], ['Muscle_Up', 3, 1, 'r', 120]] },
+      ],
+    },
+    // ================= v1.7: more weight-free routines =================
+    {
+      id: 'yoga_lifters', cat: 'Yoga', name: 'Yoga for Lifters', icon: '🧘‍♂️', color: '#9b8cff', min: 20, level: 'All levels',
+      desc: 'Six flows targeting what lifting tightens: hips, hamstrings, upper back and shoulders. Great on rest days.',
+      sessions: [
+        { t: 'Hips open', items: [['Cat_Stretch', 1, 10, 'r', 5, 'Cat–cow'], ['y_down_dog', 2, 40, 's', 5], ['y_warrior2', 2, 40, 's', 5], ['y_pigeon', 2, 60, 's', 5], ['y_happy_baby', 1, 60, 's', 5]] },
+        { t: 'Hamstrings', items: [['y_down_dog', 2, 45, 's', 5], ['y_triangle', 2, 40, 's', 5], ['Runners_Stretch', 2, 45, 's', 5, 'Half splits'], ['Seated_Floor_Hamstring_Stretch', 1, 60, 's', 5, 'Seated forward fold'], ['Childs_Pose', 1, 60, 's', 5, "Child's pose"]] },
+        { t: 'Upper back & shoulders', items: [['Cat_Stretch', 1, 10, 'r', 5, 'Cat–cow'], ['y_cobra', 3, 20, 's', 5], ['Chest_And_Front_Of_Shoulder_Stretch', 2, 40, 's', 5, 'Doorway chest opener'], ['Overhead_Lat', 2, 40, 's', 5, 'Side lat stretch'], ['Childs_Pose', 1, 60, 's', 5, "Child's pose"]] },
+        { t: 'Legs & balance', items: [['y_chair', 2, 30, 's', 10], ['y_warrior1', 2, 40, 's', 5], ['y_tree', 2, 40, 's', 5], ['Kneeling_Hip_Flexor', 2, 45, 's', 5, 'Low lunge'], ['y_happy_baby', 1, 60, 's', 5]] },
+        { t: 'Spine & core', items: [['y_boat', 3, 20, 's', 15], ['Spinal_Stretch', 2, 40, 's', 5, 'Seated twist'], ['y_cobra', 2, 25, 's', 5], ['Knee_Across_The_Body', 2, 45, 's', 5, 'Supine twist'], ['Hug_Knees_To_Chest', 1, 60, 's', 5, 'Knees to chest']] },
+        { t: 'Full flow', items: [['y_down_dog', 2, 40, 's', 5], ['y_warrior1', 2, 30, 's', 5], ['y_warrior2', 2, 30, 's', 5], ['y_triangle', 2, 30, 's', 5], ['y_pigeon', 2, 60, 's', 5], ['Childs_Pose', 1, 90, 's', 5, 'Resting pose']] },
+      ],
+    },
+    {
+      id: 'yoga_morning', cat: 'Yoga', name: 'Morning Yoga Flow', icon: '🌅', color: '#ffb35c', min: 10, level: 'Beginner',
+      desc: 'Short energising flows to wake the body up — perfect before work or a lifting session.',
+      sessions: [
+        { t: 'Wake up', items: [['Upward_Stretch', 1, 30, 's', 5, 'Mountain reach'], ['Cat_Stretch', 1, 8, 'r', 5, 'Cat–cow'], ['y_down_dog', 2, 30, 's', 5], ['y_cobra', 2, 20, 's', 5], ['Childs_Pose', 1, 45, 's', 5, "Child's pose"]] },
+        { t: 'Stand strong', items: [['y_chair', 2, 25, 's', 5], ['y_warrior1', 2, 30, 's', 5], ['y_warrior2', 2, 30, 's', 5], ['y_tree', 2, 30, 's', 5]] },
+        { t: 'Twist & open', items: [['Cat_Stretch', 1, 10, 'r', 5, 'Cat–cow'], ['Worlds_Greatest_Stretch', 2, 5, 'r', 5, 'Lunge twist'], ['y_triangle', 2, 30, 's', 5], ['Spinal_Stretch', 2, 30, 's', 5, 'Seated twist']] },
+        { t: 'Sun flow', items: [['Upward_Stretch', 1, 20, 's', 5, 'Mountain reach'], ['Standing_Toe_Touches', 1, 8, 'r', 5, 'Forward fold'], ['y_down_dog', 2, 30, 's', 5], ['y_cobra', 2, 20, 's', 5], ['y_warrior1', 2, 30, 's', 5]] },
+        { t: 'Balance', items: [['y_tree', 2, 40, 's', 5], ['y_chair', 2, 30, 's', 5], ['y_boat', 2, 20, 's', 10], ['y_down_dog', 1, 45, 's', 5]] },
+      ],
+    },
+    {
+      id: 'yoga_evening', cat: 'Yoga', name: 'Evening Wind-Down', icon: '🌙', color: '#6aa8ff', min: 15, level: 'All levels',
+      desc: 'Slow floor-based stretching and long holds to calm the nervous system and help you sleep.',
+      sessions: [
+        { t: 'Let go', items: [['Childs_Pose', 1, 90, 's', 5, "Child's pose"], ['Cat_Stretch', 1, 8, 'r', 5, 'Slow cat–cow'], ['y_happy_baby', 1, 90, 's', 5], ['Knee_Across_The_Body', 2, 60, 's', 5, 'Supine twist'], ['Hug_Knees_To_Chest', 1, 90, 's', 5, 'Knees to chest']] },
+        { t: 'Hips & low back', items: [['y_pigeon', 2, 75, 's', 5], ['Lying_Glute', 2, 60, 's', 5, 'Figure-four'], ['Groin_and_Back_Stretch', 1, 75, 's', 5, 'Butterfly fold'], ['Childs_Pose', 1, 90, 's', 5, "Child's pose"]] },
+        { t: 'Hamstrings & spine', items: [['Seated_Floor_Hamstring_Stretch', 2, 75, 's', 5, 'Seated forward fold'], ['The_Straddle', 1, 75, 's', 5, 'Wide-leg fold'], ['Spinal_Stretch', 2, 45, 's', 5, 'Seated twist'], ['y_happy_baby', 1, 60, 's', 5]] },
+        { t: 'Shoulders & neck', items: [['Side_Neck_Stretch', 2, 30, 's', 5, 'Neck release'], ['Chin_To_Chest_Stretch', 1, 30, 's', 5], ['Upper_Back_Stretch', 2, 40, 's', 5], ['Childs_Pose', 1, 90, 's', 5, "Child's pose"]] },
+        { t: 'Deep rest', items: [['y_pigeon', 2, 90, 's', 5], ['Knee_Across_The_Body', 2, 75, 's', 5, 'Supine twist'], ['y_happy_baby', 1, 90, 's', 5], ['Hug_Knees_To_Chest', 1, 120, 's', 5, 'Final rest']] },
+      ],
+    },
+    {
+      id: 'pilates_basics', cat: 'Pilates', name: 'Pilates Mat Basics', icon: '🩰', color: '#ff7eb6', min: 20, level: 'Beginner → intermediate',
+      desc: 'The classical mat sequence: the Hundred, roll-ups, leg circles and the stretch series. Core, control and posture.',
+      sessions: [
+        { t: 'Foundations', items: [['p_hundred', 1, 60, 's', 20], ['p_rollup', 2, 6, 'r', 20], ['p_leg_circle', 2, 10, 'r', 15], ['p_single_leg_stretch', 2, 10, 'r', 20], ['Pelvic_Tilt_Into_Bridge', 2, 8, 'r', 15, 'Shoulder bridge']] },
+        { t: 'Stretch series', items: [['p_hundred', 1, 60, 's', 20], ['p_single_leg_stretch', 2, 12, 'r', 20], ['p_double_leg_stretch', 2, 8, 'r', 20], ['Scissor_Kick', 2, 20, 'r', 20, 'Scissors'], ['Air_Bike', 2, 16, 'r', 20, 'Criss-cross']] },
+        { t: 'Back & glutes', items: [['p_swimming', 3, 30, 's', 20], ['Superman', 2, 10, 'r', 20, 'Swan prep'], ['Butt_Lift_Bridge', 3, 12, 'r', 20, 'Shoulder bridge'], ['Side_Leg_Raises', 2, 12, 'r', 15, 'Side kick'], ['Childs_Pose', 1, 45, 's', 5, 'Rest position']] },
+        { t: 'Twist & reach', items: [['p_rollup', 2, 8, 'r', 20], ['p_saw', 2, 6, 'r', 15], ['Spinal_Stretch', 2, 30, 's', 10, 'Spine twist'], ['p_leg_circle', 2, 10, 'r', 15], ['Russian_Twist', 2, 16, 'r', 20]] },
+        { t: 'Powerhouse', items: [['p_hundred', 1, 100, 's', 20], ['p_double_leg_stretch', 3, 10, 'r', 20], ['x_v_up', 3, 6, 'r', 30, 'Teaser'], ['Plank', 2, 45, 's', 20, 'Front support'], ['Side_Bridge', 2, 30, 's', 15, 'Side plank']] },
+        { t: 'Full mat', items: [['p_hundred', 1, 100, 's', 20], ['p_rollup', 2, 8, 'r', 20], ['p_leg_circle', 2, 10, 'r', 15], ['p_single_leg_stretch', 2, 12, 'r', 15], ['p_double_leg_stretch', 2, 10, 'r', 15], ['p_saw', 2, 6, 'r', 15], ['p_swimming', 2, 30, 's', 15]] },
+      ],
+    },
+    {
+      id: 'pilates_sculpt', cat: 'Pilates', name: 'Pilates Sculpt', icon: '✨', color: '#c08bff', min: 25, level: 'Intermediate',
+      desc: 'Pilates-style toning with a resistance band: glutes, inner/outer thighs, arms and a strong centre.',
+      sessions: [
+        { t: 'Lower body', items: [['Butt_Lift_Bridge', 3, 15, 'r', 20, 'Bridge pulses'], ['Side_Leg_Raises', 3, 15, 'r', 15, 'Side kick'], ['Monster_Walk', 3, 12, 'r', 20, 'Banded walk'], ['v_band_kickback', 3, 12, 'r', 20], ['Lying_Crossover', 1, 45, 's', 5, 'Hip stretch']] },
+        { t: 'Arms & posture', items: [['Band_Pull_Apart', 3, 15, 'r', 20], ['v_band_curl', 3, 12, 'r', 20], ['v_band_ohext', 3, 12, 'r', 20], ['Lateral_Raise_-_With_Bands', 3, 12, 'r', 20], ['p_swimming', 2, 30, 's', 15]] },
+        { t: 'Core', items: [['p_hundred', 1, 100, 's', 20], ['p_double_leg_stretch', 3, 10, 'r', 20], ['v_band_pallof', 3, 10, 'r', 20], ['x_hollow_hold', 2, 30, 's', 20], ['p_saw', 2, 6, 'r', 15]] },
+        { t: 'Glutes & thighs', items: [['Hip_Lift_with_Band', 3, 15, 'r', 20, 'Banded bridge'], ['Band_Hip_Adductions', 3, 15, 'r', 15], ['Hip_Extension_with_Bands', 3, 12, 'r', 20], ['Single_Leg_Glute_Bridge', 2, 12, 'r', 20], ['y_pigeon', 2, 45, 's', 5]] },
+        { t: 'Total body', items: [['p_rollup', 2, 8, 'r', 20], ['v_band_row', 3, 15, 'r', 20], ['Squats_-_With_Bands', 3, 15, 'r', 30], ['v_band_chestpress', 3, 12, 'r', 20], ['p_single_leg_stretch', 2, 12, 'r', 15]] },
+        { t: 'Burn-out', items: [['p_hundred', 1, 100, 's', 15], ['Monster_Walk', 3, 16, 'r', 15], ['Side_Leg_Raises', 3, 20, 'r', 15], ['Butt_Lift_Bridge', 2, 25, 'r', 20], ['x_plank_tap', 2, 20, 'r', 15]] },
+      ],
+    },
+    {
+      id: 'bands_strength', cat: 'Bands', name: 'Resistance Band Strength', icon: '🎗️', color: '#2fd3a8', min: 30, level: 'All levels',
+      desc: 'A full upper/lower split using only bands — 8 sessions over 2–4 weeks. Pick a heavier band when the top of the rep range gets easy.',
+      sessions: [
+        { t: 'Upper A', items: [['v_band_chestpress', 3, 12, 'r', 60], ['v_band_row', 3, 12, 'r', 60], ['v_band_ohp', 3, 10, 'r', 60], ['v_band_pulldown', 3, 12, 'r', 60], ['v_band_curl', 2, 15, 'r', 45], ['v_band_pushdown', 2, 15, 'r', 45]] },
+        { t: 'Lower A', items: [['Squats_-_With_Bands', 3, 15, 'r', 60], ['v_band_rdl', 3, 12, 'r', 60], ['v_band_splitsquat', 3, 10, 'r', 60], ['Hip_Lift_with_Band', 3, 15, 'r', 45], ['Calf_Raises_-_With_Bands', 3, 20, 'r', 30]] },
+        { t: 'Upper B', items: [['Pushups', 3, 12, 'r', 60], ['v_band_rearfly', 3, 15, 'r', 45], ['Lateral_Raise_-_With_Bands', 3, 15, 'r', 45], ['v_band_facepull', 3, 15, 'r', 45], ['v_band_hammer', 2, 12, 'r', 45], ['v_band_ohext', 2, 12, 'r', 45]] },
+        { t: 'Lower B', items: [['v_band_deadlift', 3, 12, 'r', 60], ['v_band_lunge', 3, 10, 'r', 60], ['Monster_Walk', 3, 15, 'r', 45], ['v_band_legcurl', 3, 12, 'r', 45], ['v_band_kickback', 2, 15, 'r', 30]] },
+        { t: 'Upper C', items: [['Bench_Press_-_With_Bands', 3, 10, 'r', 60], ['Band_Assisted_Pull-Up', 3, 6, 'r', 90], ['Shoulder_Press_-_With_Bands', 3, 10, 'r', 60], ['Upright_Row_-_With_Bands', 3, 12, 'r', 45], ['Band_Skull_Crusher', 2, 12, 'r', 45]] },
+        { t: 'Lower C', items: [['Squats_-_With_Bands', 4, 12, 'r', 60], ['Band_Good_Morning', 3, 12, 'r', 60], ['Hip_Extension_with_Bands', 3, 12, 'r', 45], ['Band_Hip_Adductions', 3, 15, 'r', 30], ['Seated_Band_Hamstring_Curl', 3, 12, 'r', 45]] },
+        { t: 'Core & posture', items: [['v_band_pallof', 3, 10, 'r', 30], ['v_band_woodchop', 3, 12, 'r', 30], ['Band_Pull_Apart', 3, 20, 'r', 30], ['External_Rotation_with_Band', 2, 15, 'r', 30], ['Plank', 2, 45, 's', 30]] },
+        { t: 'Full-body test', items: [['Squats_-_With_Bands', 2, 20, 'r', 60], ['v_band_row', 2, 20, 'r', 60], ['v_band_chestpress', 2, 20, 'r', 60], ['v_band_rdl', 2, 20, 'r', 60], ['v_band_ohp', 2, 15, 'r', 60]] },
+      ],
+    },
+    {
+      id: 'bands_travel', cat: 'Bands', name: 'Travel Band Workout', icon: '🧳', color: '#f5b83d', min: 15, level: 'All levels',
+      desc: 'One band, a hotel room, 15 minutes. Five quick full-body circuits.',
+      sessions: [
+        { t: 'Circuit 1', items: [['Squats_-_With_Bands', 3, 15, 'r', 20], ['v_band_row', 3, 15, 'r', 20], ['Pushups', 3, 10, 'r', 20], ['Band_Pull_Apart', 3, 20, 'r', 20]] },
+        { t: 'Circuit 2', items: [['v_band_rdl', 3, 15, 'r', 20], ['v_band_ohp', 3, 12, 'r', 20], ['v_band_lunge', 3, 10, 'r', 20], ['v_band_curl', 3, 15, 'r', 20]] },
+        { t: 'Circuit 3', items: [['Monster_Walk', 3, 15, 'r', 20], ['v_band_chestpress', 3, 15, 'r', 20], ['v_band_facepull', 3, 15, 'r', 20], ['v_band_pallof', 3, 10, 'r', 20]] },
+        { t: 'Circuit 4', items: [['v_band_splitsquat', 3, 10, 'r', 20], ['v_band_pulldown', 3, 15, 'r', 20], ['v_band_pushdown', 3, 15, 'r', 20], ['x_plank_tap', 3, 20, 'r', 20]] },
+        { t: 'Circuit 5', items: [['v_band_deadlift', 3, 15, 'r', 20], ['Lateral_Raise_-_With_Bands', 3, 15, 'r', 20], ['v_band_woodchop', 3, 12, 'r', 20], ['x_burpee', 3, 8, 'r', 30]] },
+      ],
+    },
+    {
+      id: 'glutes', cat: 'Bands', name: 'Glute Builder', icon: '🍑', color: '#ff6a33', min: 25, level: 'All levels',
+      desc: 'Bands + bodyweight glute specialisation: bridges, kickbacks, abduction and single-leg work. 6 sessions.',
+      sessions: [
+        { t: 'Activate', items: [['Monster_Walk', 2, 15, 'r', 20], ['Hip_Lift_with_Band', 3, 20, 'r', 30], ['v_band_kickback', 3, 15, 'r', 30], ['Side_Leg_Raises', 3, 15, 'r', 20], ['y_pigeon', 1, 60, 's', 5]] },
+        { t: 'Strength', items: [['Single_Leg_Glute_Bridge', 3, 12, 'r', 45], ['v_band_rdl', 3, 15, 'r', 45], ['v_band_splitsquat', 3, 12, 'r', 45], ['Hip_Extension_with_Bands', 3, 15, 'r', 30]] },
+        { t: 'Burn', items: [['Butt_Lift_Bridge', 4, 20, 'r', 30], ['Monster_Walk', 3, 20, 'r', 20], ['v_band_kickback', 3, 20, 'r', 20], ['x_wall_sit', 2, 45, 's', 30]] },
+        { t: 'Single leg', items: [['Bodyweight_Walking_Lunge', 3, 12, 'r', 45], ['x_skater_jump', 3, 12, 'r', 30], ['Single_Leg_Glute_Bridge', 3, 15, 'r', 30], ['Kettlebell_One-Legged_Deadlift', 3, 10, 'r', 45, 'Single-leg RDL (bodyweight)']] },
+        { t: 'Pump', items: [['Hip_Lift_with_Band', 4, 25, 'r', 30], ['Band_Hip_Adductions', 3, 15, 'r', 20], ['Side_Leg_Raises', 3, 20, 'r', 20], ['Glute_Kickback', 3, 15, 'r', 20]] },
+        { t: 'Test', items: [['Single_Leg_Glute_Bridge', 2, 20, 'r', 45], ['v_band_rdl', 2, 25, 'r', 45], ['x_pistol_squat', 3, 3, 'r', 60], ['Butt_Lift_Bridge', 1, 50, 'r', 60]] },
+      ],
+    },
+    {
+      id: 'tabata', cat: 'HIIT', name: 'Tabata HIIT', icon: '⏱️', color: '#ff4a4a', min: 20, level: 'Intermediate', interval: true,
+      desc: '20 seconds all-out, 10 seconds rest — timers run automatically from move to move. No equipment.',
+      sessions: [
+        { t: 'Classic', items: [['x_jumping_jack', 4, 20, 's', 10], ['Bodyweight_Squat', 4, 20, 's', 10], ['Mountain_Climbers', 4, 20, 's', 10], ['Pushups', 4, 20, 's', 10]] },
+        { t: 'Legs on fire', items: [['Freehand_Jump_Squat', 4, 20, 's', 10], ['x_skater_jump', 4, 20, 's', 10], ['Split_Jump', 4, 20, 's', 10], ['x_wall_sit', 4, 20, 's', 10]] },
+        { t: 'Core blast', items: [['Mountain_Climbers', 4, 20, 's', 10], ['x_plank_tap', 4, 20, 's', 10], ['Air_Bike', 4, 20, 's', 10], ['x_hollow_rock', 4, 20, 's', 10]] },
+        { t: 'Upper burn', items: [['Pushups', 4, 20, 's', 10], ['x_bear_crawl', 4, 20, 's', 10], ['Bench_Dips', 4, 20, 's', 10], ['x_pike_pushup', 4, 20, 's', 10]] },
+        { t: 'Cardio', items: [['x_high_knees', 4, 20, 's', 10], ['x_burpee', 4, 20, 's', 10], ['Star_Jump', 4, 20, 's', 10], ['Fast_Skipping', 4, 20, 's', 10]] },
+        { t: 'The finisher', items: [['x_burpee', 8, 20, 's', 10], ['Mountain_Climbers', 8, 20, 's', 10]] },
+      ],
+    },
+    {
+      id: 'agility', cat: 'Plyometrics', name: 'Speed & Agility', icon: '🏃‍♂️', color: '#f5b83d', min: 25, level: 'Intermediate',
+      desc: 'Footwork, quick feet and change-of-direction drills — great for sports and running. Use cones or any markers.',
+      sessions: [
+        { t: 'Quick feet', items: [['Fast_Skipping', 3, 20, 's', 30], ['x_high_knees', 3, 20, 's', 30], ['Double_Leg_Butt_Kick', 3, 20, 's', 30], ['Lateral_Cone_Hops', 3, 10, 'r', 45]] },
+        { t: 'Lateral', items: [['Carioca_Quick_Step', 3, 20, 's', 30], ['Side_to_Side_Box_Shuffle', 3, 20, 's', 45], ['Lateral_Bound', 3, 8, 'r', 45], ['x_skater_jump', 3, 12, 'r', 45]] },
+        { t: 'Acceleration', items: [['Linear_Acceleration_Wall_Drill', 3, 15, 's', 30], ['Moving_Claw_Series', 3, 20, 's', 30], ['Single-Cone_Sprint_Drill', 4, 1, 'r', 60], ['Standing_Long_Jump', 3, 5, 'r', 60]] },
+        { t: 'Hops', items: [['Front_Cone_Hops_or_hurdle_hops', 3, 8, 'r', 45], ['Single-Leg_Hop_Progression', 3, 8, 'r', 45], ['Single-Leg_Lateral_Hop', 3, 8, 'r', 45], ['Rope_Jumping', 3, 45, 's', 30]] },
+        { t: 'Reactive', items: [['Side_Hop-Sprint', 4, 1, 'r', 60], ['Quick_Leap', 3, 6, 'r', 45], ['Alternate_Leg_Diagonal_Bound', 3, 8, 'r', 45], ['x_burpee', 3, 8, 'r', 45]] },
+        { t: 'Test', items: [['Rope_Jumping', 2, 60, 's', 45], ['Lateral_Bound', 2, 12, 'r', 60], ['Standing_Long_Jump', 3, 3, 'r', 60], ['Carioca_Quick_Step', 2, 30, 's', 45]] },
+      ],
+    },
+    {
+      id: 'animal', cat: 'Bodyweight', name: 'Animal Flow', icon: '🦍', color: '#2fd3a8', min: 20, level: 'All levels',
+      desc: 'Ground-based crawls and flows for strength, mobility and coordination — playful and joint-friendly.',
+      sessions: [
+        { t: 'Crawl basics', items: [['x_bear_crawl', 3, 30, 's', 30], ['x_crab_walk', 3, 30, 's', 30], ['Frog_Hops', 3, 8, 'r', 30], ['Inchworm', 3, 6, 'r', 30]] },
+        { t: 'Flow', items: [['x_bear_crawl', 3, 40, 's', 30], ['Spider_Crawl', 3, 30, 's', 30], ['x_crab_walk', 3, 40, 's', 30], ['Worlds_Greatest_Stretch', 2, 6, 'r', 15]] },
+        { t: 'Ape & frog', items: [['Frog_Hops', 3, 10, 'r', 30], ['Inchworm', 3, 8, 'r', 30], ['x_bear_crawl', 3, 30, 's', 30], ['y_down_dog', 2, 30, 's', 10]] },
+        { t: 'Strength', items: [['Spider_Crawl', 3, 40, 's', 30], ['x_pike_pushup', 3, 8, 'r', 45], ['x_crab_walk', 3, 45, 's', 30], ['x_plank_tap', 3, 20, 'r', 30]] },
+        { t: 'Long flow', items: [['x_bear_crawl', 2, 60, 's', 30], ['x_crab_walk', 2, 60, 's', 30], ['Spider_Crawl', 2, 45, 's', 30], ['Inchworm', 2, 10, 'r', 30], ['Childs_Pose', 1, 60, 's', 5]] },
+      ],
+    },
+    {
+      id: 'posture', cat: 'Mobility', name: 'Desk Posture Fix', icon: '🪑', color: '#6aa8ff', min: 10, level: 'All levels',
+      desc: 'Undo hours of sitting: chest openers, upper-back activation, hip flexor stretches and neck relief. 10 minutes a day.',
+      sessions: [
+        { t: 'Open the chest', items: [['Chest_And_Front_Of_Shoulder_Stretch', 2, 30, 's', 5, 'Doorway stretch'], ['Band_Pull_Apart', 2, 15, 'r', 15], ['Elbows_Back', 2, 10, 'r', 10], ['Kneeling_Hip_Flexor', 2, 30, 's', 5]] },
+        { t: 'Neck & shoulders', items: [['Side_Neck_Stretch', 2, 30, 's', 5], ['Chin_To_Chest_Stretch', 1, 30, 's', 5], ['Shoulder_Circles', 1, 30, 's', 5], ['Upper_Back_Stretch', 2, 30, 's', 5]] },
+        { t: 'Upper-back strength', items: [['v_band_facepull', 3, 15, 'r', 20], ['p_swimming', 2, 30, 's', 15], ['External_Rotation_with_Band', 2, 15, 'r', 15], ['Superman', 2, 10, 'r', 15]] },
+        { t: 'Hips & spine', items: [['Kneeling_Hip_Flexor', 2, 40, 's', 5], ['Cat_Stretch', 1, 10, 'r', 5], ['Spinal_Stretch', 2, 30, 's', 5], ['Butt_Lift_Bridge', 2, 12, 'r', 15]] },
+        { t: 'Desk break', items: [['Arm_Circles', 1, 30, 's', 5], ['Standing_Lateral_Stretch', 2, 20, 's', 5], ['Elbows_Back', 2, 10, 'r', 10], ['Bodyweight_Squat', 2, 10, 'r', 15]] },
+        { t: 'Full reset', items: [['Cat_Stretch', 1, 10, 'r', 5], ['y_cobra', 2, 20, 's', 5], ['Band_Pull_Apart', 2, 20, 'r', 15], ['Kneeling_Hip_Flexor', 2, 40, 's', 5], ['Childs_Pose', 1, 45, 's', 5]] },
+      ],
+    },
+    {
+      id: 'lowimpact', cat: 'Cardio', name: 'Low-Impact Cardio', icon: '🫀', color: '#ff7eb6', min: 25, level: 'Beginner',
+      desc: 'No jumping, easy on the joints and neighbours — keeps your heart rate up with steady movement.',
+      sessions: [
+        { t: 'Steady', items: [['Bodyweight_Squat', 3, 45, 's', 15], ['Standing_Hip_Circles', 2, 30, 's', 10], ['Bodyweight_Walking_Lunge', 3, 45, 's', 15], ['x_plank_tap', 3, 30, 's', 15], ['Butt_Lift_Bridge', 3, 45, 's', 15]] },
+        { t: 'Marching', items: [['Hip_Flexion_with_Band', 3, 45, 's', 15, 'Marching knee drives'], ['Step-up_with_Knee_Raise', 3, 45, 's', 15], ['Arm_Circles', 2, 30, 's', 10], ['x_wall_sit', 3, 30, 's', 15]] },
+        { t: 'Floor flow', items: [['x_bird_dog', 3, 45, 's', 15], ['x_bear_crawl', 3, 30, 's', 15], ['Butt_Lift_Bridge', 3, 45, 's', 15], ['Side_Leg_Raises', 3, 45, 's', 15]] },
+        { t: 'Standing', items: [['Bodyweight_Squat', 4, 40, 's', 15], ['Standing_Lateral_Stretch', 2, 30, 's', 10], ['Bodyweight_Walking_Lunge', 4, 40, 's', 15], ['x_calf_raise_bw', 3, 40, 's', 15]] },
+        { t: 'Mix', items: [['Inchworm', 3, 45, 's', 15], ['Step-up_with_Knee_Raise', 3, 45, 's', 15], ['x_plank_tap', 3, 40, 's', 15], ['Bodyweight_Squat', 3, 45, 's', 15]] },
+        { t: 'Longer', items: [['Bodyweight_Walking_Lunge', 4, 60, 's', 15], ['x_bird_dog', 3, 45, 's', 15], ['Bodyweight_Squat', 4, 60, 's', 15], ['Butt_Lift_Bridge', 3, 60, 's', 15]] },
       ],
     },
   ];

@@ -129,13 +129,13 @@
   }
   function extrasRow() {
     const st = S(); let h = '';
-    const ad = (window.ADDONS || []).filter(p => { const pr = st.addons[p.id]; return pr && pr.done.length && F.addonNext(p) >= 0; });
+    const ad = F.addonsToday ? F.addonsToday() : [];
     const ins = window.Energy.insights(st).list.filter(x => x.actions && x.actions.length)[0];
     const cdToday = F.cardioDows().includes(new Date().getDay()) && !st.cardio.some(c => c.start >= E.startOfDay(Date.now()));
     if (!ad.length && !ins && !cdToday) return '';
     h += '<div class="grid two">';
     if (cdToday) h += '<div class="card tight row"><div style="font-size:28px">🏃</div><div class="grow"><b>Cardio day</b><div class="small muted">' + (st.profile.goal === 'fatloss' ? '30–45 min, moderate' : '25–40 min easy (zone 2)') + ' — log or import it when done</div></div><button class="btn sm" data-a="logCardio">Log</button></div>';
-    ad.forEach(p => { const i = F.addonNext(p); h += '<div class="card tight row"><div style="font-size:28px">' + p.icon + '</div><div class="grow"><b>' + esc(p.name) + '</b><div class="small muted">Next: session ' + (i + 1) + ' · ' + esc(p.sessions[i].t) + ' · ~' + p.min + ' min</div></div><button class="btn sm primary" data-a="startAddon" data-id="' + p.id + '" data-i="' + i + '">Start</button></div>'; });
+    ad.forEach(({ p, sched }) => { const i = F.addonNext(p); const pr = st.addons[p.id] || {}; const mn = F.scaleSession(p, i, pr.minutes || 0).min; h += '<div class="card tight row" data-k="xr-' + p.id + '"><div style="font-size:28px">' + p.icon + '</div><div class="grow"><b>' + esc(p.name) + '</b>' + (sched ? ' <span class="tag" style="color:' + p.color + '">Today</span>' : '') + '<div class="small muted">Session ' + (i + 1) + '/' + p.sessions.length + ' · ' + esc(p.sessions[i].t) + ' · ~' + mn + ' min</div></div><button class="btn sm primary" data-a="startAddon" data-id="' + p.id + '" data-i="' + i + '">Start</button></div>'; });
     if (ins) h += '<div class="card tight"><div class="row between"><b style="color:var(--' + ({ warm: 'warm', hot: 'hot' }[ins.tone] || 'text') + ')">' + esc(ins.title) + '</b><span class="tag">Body</span></div><div class="small muted" style="margin:4px 0 8px">' + esc(ins.text) + '</div>' + ins.actions.map(a => '<button class="btn sm" style="margin-right:6px" data-a="applyInsight" data-k="' + a.k + '">' + esc(a.label) + '</button>').join('') + '</div>';
     return h + '</div>';
   }
@@ -159,7 +159,7 @@
     let h = '<div class="page"><div class="row between"><div><div class="muted small">' + esc(E.GOALS[p.goal].label) + ' · ' + esc(E.SPLIT_LABEL[plan.split]) + '</div><h1>Your plan</h1></div><button class="icon-btn" data-a="planSettings">' + I.gear + '</button></div>';
     const seg = F.UI.planSeg || 'weights';
     h += '<div class="seg" style="max-width:460px">' + [['weights', 'Weights'], ['addons', 'Add-ons'], ['cardio', 'Cardio']].map(([k, l]) => '<button class="' + (seg === k ? 'on' : '') + '" data-a="planSeg" data-s="' + k + '">' + l + '</button>').join('') + '</div>';
-    if (seg === 'addons') return h + '<p class="small muted" style="margin:0">Short programs to stack on top of your plan — one session at a time, whenever you like.</p>' + V.addonsList() + '</div>';
+    if (seg === 'addons') return h + '<p class="small muted" style="margin:0">Multi-day programs to stack on your plan — yoga, Pilates, bands, HIIT and more. Pick a length that fits your day and schedule them on any weekdays.</p>' + V.addonsList() + '</div>';
     if (seg === 'cardio') return h + V.cardioPanel() + '</div>';
     if (F.smart()) h += smartPlanList();
     else h += '<div class="grid two">';
@@ -185,6 +185,7 @@
     h += '<div class="row wrap"><button class="btn" data-a="regen">' + I.refresh + 'Shuffle exercises</button><button class="btn ghost" data-a="planSettings">' + I.gear + 'Goals &amp; schedule</button></div>';
     return h + '</div>';
   };
+  const progTags = dow => (F.addonsOn ? F.addonsOn(dow) : []).map(p => ' <span class="tag" style="color:' + p.color + '">+ ' + p.icon + ' ' + esc(p.name) + '</span>').join('');
   function smartPlanList() {
     const st = S(); const sc = F.sched(); const plan = st.plan;
     let h = '<div class="card"><div class="card-h"><h3>Next 7 days</h3><span class="tag accent">Smart schedule</span></div><div class="list">';
@@ -193,9 +194,9 @@
       const date = new Date(d.t).getDate();
       if (d.kind === 'lift') {
         const day = plan.days[d.idx];
-        h += '<button class="li li-btn" data-a="openDay" data-idx="' + d.idx + '"><div style="width:52px"><div class="num" style="font-size:17px;color:var(--accent-2)">' + lbl + '</div><div class="tiny muted">' + date + '</div></div><div class="grow"><b>' + esc(day.title) + '</b>' + (d.cardio ? ' <span class="tag">+ cardio</span>' : '') + '<div class="small muted">' + esc(d.reason) + '</div><div class="bar fresh" style="margin-top:6px;height:4px"><i style="width:' + d.recovery + '%"></i></div></div><span class="num" style="font-size:18px;color:' + (d.forced ? 'var(--warm)' : 'var(--fresh)') + '">' + d.recovery + '%</span></button>';
+        h += '<button class="li li-btn" data-a="openDay" data-idx="' + d.idx + '"><div style="width:52px"><div class="num" style="font-size:17px;color:var(--accent-2)">' + lbl + '</div><div class="tiny muted">' + date + '</div></div><div class="grow"><b>' + esc(day.title) + '</b>' + (d.cardio ? ' <span class="tag">+ cardio</span>' : '') + progTags(d.dow) + '<div class="small muted">' + esc(d.reason) + '</div><div class="bar fresh" style="margin-top:6px;height:4px"><i style="width:' + d.recovery + '%"></i></div></div><span class="num" style="font-size:18px;color:' + (d.forced ? 'var(--warm)' : 'var(--fresh)') + '">' + d.recovery + '%</span></button>';
       } else {
-        h += '<div class="li" style="opacity:' + (d.kind === 'done' ? 1 : .7) + '"><div style="width:52px"><div class="num" style="font-size:17px;color:var(--dim)">' + lbl + '</div><div class="tiny muted">' + date + '</div></div><div class="grow"><b style="color:var(--muted)">' + (d.kind === 'done' ? '✓ Done' : d.cardio ? '🏃 Cardio day' : 'Rest') + '</b><div class="small muted">' + esc(d.reason || '') + (d.cardio && d.kind !== 'done' ? ' · suggested ' + ({ run: 'run', cycle: 'ride', swim: 'swim', row: 'row' }[d.cardioType] || 'cardio') : '') + '</div></div></div>';
+        h += '<div class="li" style="opacity:' + (d.kind === 'done' ? 1 : .7) + '"><div style="width:52px"><div class="num" style="font-size:17px;color:var(--dim)">' + lbl + '</div><div class="tiny muted">' + date + '</div></div><div class="grow"><b style="color:var(--muted)">' + (d.kind === 'done' ? '✓ Done' : d.cardio ? '🏃 Cardio day' : 'Rest') + '</b>' + (d.kind !== 'done' ? progTags(d.dow) : '') + '<div class="small muted">' + esc(d.reason || '') + (d.cardio && d.kind !== 'done' ? ' · suggested ' + ({ run: 'run', cycle: 'ride', swim: 'swim', row: 'row' }[d.cardioType] || 'cardio') : '') + '</div></div></div>';
       }
     });
     h += '</div><div class="tiny dim" style="margin-top:8px">Re-planned automatically after every workout, run, ride or sync — based on projected recovery of each muscle from all your training, sleep and HRV. Sessions per week: ' + sc.perWeek + ' from your ' + st.profile.days.length + ' available days.</div></div>';
@@ -212,6 +213,9 @@
     ['weights', '🏋️ Weights', e => e.cat === 's' && !BWQ.includes(e.eq)],
     ['bodyweight', '🤸 Bodyweight', e => (e.cat === 's' || e.cat === 'p') && BWQ.includes(e.eq)],
     ['cali', '💪 Calisthenics', e => e.cat === 's' && BWQ.includes(e.eq) && e.mech === 'c' && !e.pm.includes('abdominals')],
+    ['yoga', '🧘 Yoga', e => /^y_/.test(e.id) || (e.cat === 'st' && e.eq === 'bodyweight')],
+    ['pilates', '🩰 Pilates', e => /^p_/.test(e.id)],
+    ['bands', '🎗️ Bands', e => e.eq === 'band'],
     ['core', '🧱 Core', e => e.cat !== 'st' && (e.pm.includes('abdominals') || (e.pm.includes('lower back') && e.eq === 'bodyweight'))],
     ['p', '⚡ Plyometric', e => e.cat === 'p'],
     ['st', '🧘 Mobility', e => e.cat === 'st'],

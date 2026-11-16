@@ -198,7 +198,7 @@
       return (e ? e.n : it.exId) + ': ' + d.length + '×' + Math.round(d.reduce((a, x) => a + (x.r || 0), 0) / d.length) + (top ? ' @ ' + F.fmtW(top) + ' ' + (s.u || F.u()) : '');
     });
     const payload = {
-      id: s.id, name: 'Forge · ' + s.title, start: s.date, end: s.end, kcal: (s.energy || window.Energy.strengthEnergy(s, S)).active, exerciseType: s.addon ? ({ yoga: 'yoga', mobility: 'stretching', cali: 'calisthenics', bootcamp: 'bootcamp', core: 'calisthenics' }[s.addon.prog] || 'strength') : 'strength', sportType: s.addon && (s.addon.prog === 'yoga' || s.addon.prog === 'mobility') ? 'Yoga' : 'WeightTraining',
+      id: s.id, name: 'Forge · ' + s.title, start: s.date, end: s.end, kcal: (s.energy || window.Energy.strengthEnergy(s, S)).active, exerciseType: F.addonHcType(s), sportType: F.addonStravaType(s),
       description: st.sets + ' sets · ' + F.fmtVol(st.vol) + ' ' + (s.u || F.u()) + ' volume · ' + (s.energy || window.Energy.strengthEnergy(s, S)).total + ' kcal incl. afterburn' + (st.hrAvg ? ' · avg HR ' + st.hrAvg : '') + '\n' + lines.join('\n') + ((s.prs || []).length ? '\n🏆 ' + s.prs.length + ' PR' + (s.prs.length > 1 ? 's' : '') : ''),
       hr: (s.hr || []).map(x => ({ t: x[0], bpm: x[1] })),
     };

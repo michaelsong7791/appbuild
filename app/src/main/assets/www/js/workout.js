@@ -176,6 +176,11 @@
     a.rest = null; a.setStart = Date.now(); clearInterval(restTick);
     if (auto && S().settings.restVibrate) B.vibrate(450);
     F.save(); F.render(); F.syncWatch();
+    // Interval programs (Tabata etc.): roll straight into the next timed set
+    if (auto && a.interval) {
+      const it = a.items[a.cur]; const j = it ? it.sets.findIndex(x => !x.done) : -1;
+      if (it && j >= 0 && F.repUnit(it.exId, it) === 'sec') startHold(a.cur, j, it.sets[j].r || it.repMax || 20);
+    }
   }
   A.skipRest = () => endRest(false);
   A.addRest = d => { const a = S().active; if (a.rest) { a.rest.until += (+d.s) * 1000; a.rest.total += (+d.s); F.save(); F.render(); } };

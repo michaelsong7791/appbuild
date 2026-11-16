@@ -256,6 +256,7 @@ class HealthBridge(private val ctx: android.content.Context, private val act: Ma
         "stairs" -> ExerciseSessionRecord.EXERCISE_TYPE_STAIR_CLIMBING_MACHINE
         "hiit" -> ExerciseSessionRecord.EXERCISE_TYPE_HIGH_INTENSITY_INTERVAL_TRAINING
         "yoga" -> ExerciseSessionRecord.EXERCISE_TYPE_YOGA
+        "pilates" -> ExerciseSessionRecord.EXERCISE_TYPE_PILATES
         "stretching" -> ExerciseSessionRecord.EXERCISE_TYPE_STRETCHING
         "calisthenics" -> ExerciseSessionRecord.EXERCISE_TYPE_CALISTHENICS
         "bootcamp" -> ExerciseSessionRecord.EXERCISE_TYPE_BOOT_CAMP

@@ -50,6 +50,11 @@
     ['v_band_fly', 'Cable_Crossover', 'Band Chest Fly'], ['v_band_frontraise', 'Front_Dumbbell_Raise', 'Band Front Raise'],
     ['v_band_rdl', 'Romanian_Deadlift', 'Band Romanian Deadlift'], ['v_band_kickback', 'Glute_Kickback', 'Band Glute Kickback'],
     ['v_band_pulldown', 'Wide-Grip_Lat_Pulldown', 'Band Lat Pulldown'], ['v_band_ohp', 'Dumbbell_Shoulder_Press', 'Band Overhead Press'],
+    ['v_band_chestpress', 'Standing_Cable_Chest_Press', 'Band Standing Chest Press'], ['v_band_deadlift', 'Barbell_Deadlift', 'Band Deadlift'],
+    ['v_band_woodchop', 'Standing_Cable_Wood_Chop', 'Band Wood Chop'], ['v_band_pallof', 'Pallof_Press', 'Band Pallof Press'],
+    ['v_band_kickback_tri', 'Tricep_Dumbbell_Kickback', 'Band Triceps Kickback'], ['v_band_splitsquat', 'Split_Squat_with_Dumbbells', 'Band Split Squat'],
+    ['v_band_shrug', 'Dumbbell_Shrug', 'Band Shrug'], ['v_band_lunge', 'Dumbbell_Lunges', 'Band Reverse Lunge'],
+    ['v_band_legcurl', 'Lying_Leg_Curls', 'Band Lying Leg Curl'], ['v_band_rearfly', 'Reverse_Flyes', 'Band Bent-Over Reverse Fly'],
   ];
   function addVariant(id, baseId, name, eq) {
     const b = BY[baseId]; if (!b || BY[id]) return;
