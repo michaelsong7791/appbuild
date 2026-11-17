@@ -1,3 +1,4 @@
+import re
 import json,re
 d={x['id']:x for x in json.load(open('exercises.json'))}
 exec(open('build_db.py').read().split("miss=")[0])  # reuse T3/T2 lists
@@ -19,8 +20,15 @@ def pat(x):
     if x['mechanic']!='compound': return 'iso'
     if p=='chest' or ('bench' in n and 'press' in n) or 'push-up' in n or 'pushup' in n: return 'hpush'
     if (p=='shoulders' and 'press' in n) or 'jerk' in n or 'handstand' in n: return 'vpush'
-    if p=='lats' or 'pulldown' in n or 'pullup' in n or 'pull-up' in n or 'chin' in n or 'muscle up' in n: return 'vpull'
-    if p=='middle back' or 'row' in n.split(): return 'hpull'
+    w=re.split(r'[^a-z]+',n)
+    if 'upright' in w: return 'other'
+    if 'row' in w or 'rows' in w: return 'hpull'
+    if any(k in n for k in ['pulldown','pullup','pull-up','muscle up','muscle-up']) or 'chin' in w or 'chins' in w or 'chin-up' in n: return 'vpull'
+    if any(k in n for k in ['deadlift','good morning','swing','clean','hip thrust','bridge','pull through','rack pull']): return 'hinge'
+    if any(k in n for k in ['lunge','split squat','step up','step-up']): return 'lunge'
+    if 'squat' in n or 'leg press' in n: return 'squat'
+    if p=='lats': return 'vpull'
+    if p=='middle back': return 'hpull'
     if any(k in n for k in ['deadlift','good morning','swing','clean','hip thrust','bridge','pull through','rack pull']): return 'hinge'
     if any(k in n for k in ['lunge','split squat','step up','step-up']): return 'lunge'
     if p=='quadriceps' or 'squat' in n or 'leg press' in n: return 'squat'

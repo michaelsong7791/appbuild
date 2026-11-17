@@ -168,8 +168,25 @@
   // ---------- Plan ops ----------
   F.regenerate = (keepSeed) => {
     const seed = keepSeed && S.plan ? S.plan.seed : undefined;
-    S.plan = E.generatePlan(S.profile, seed);
+    S.plan = E.generatePlan(S.profile, seed, keepSeed ? null : S.sessions);
     save();
+  };
+
+  // Rotate exercises that have run their course (variety setting). Called after workouts and on start-up.
+  F.rotate = (force) => {
+    if (!S.plan || !E.rotatePlan) return [];
+    if (!S.plan.rotV) { // first run on an older plan: keep main lifts for a full cycle, let stale accessories rotate now
+      S.plan.days.forEach(d => d.items.forEach((it, i) => { const e = E.ex(it.exId); if (it.main == null) it.main = !!e && e.mech === 'c' && i < 2; if (it.main) it.added = Date.now(); }));
+      S.plan.rotV = 1; save();
+    }
+    const ch = E.rotatePlan(S.plan, S.profile, S.sessions, force);
+    if (ch.length) {
+      save(); if (window.Schedule) window.Schedule.invalidate();
+      const nm = id => (E.ex(id) || { n: id }).n;
+      S.rotLog = (S.rotLog || []).concat(ch.map(c => Object.assign({ t: Date.now() }, c))).slice(-40);
+      F.toast(ch.length === 1 ? 'Fresh pick: ' + nm(ch[0].to) + ' replaces ' + nm(ch[0].from) : ch.length + ' exercises rotated for variety — see Plan');
+    }
+    return ch;
   };
 
   // ---------- Health Connect / Samsung Health ----------
@@ -260,6 +277,7 @@
     F.refreshIntegrations();
     setTimeout(() => { if (F.syncAll) { F.syncAll(true); F.scheduleSync(); } }, 800);
     if (S.active) { UI.stack = [{ t: 'workout' }]; render(); if (F.resumeWorkout) F.resumeWorkout(); }
+    else setTimeout(() => { if (!S.active && F.rotate) { F.rotate(); render(); } }, 2500);
     if (S.repUpgrade) { delete S.repUpgrade; save(true); setTimeout(() => F.toast('Updated: higher rep ranges + smart scheduling. Adjust in Plan → ⚙'), 1200); }
   };
 })();

@@ -182,7 +182,7 @@
       h += '<div class="inv" style="grid-template-columns:92px 1fr 64px"><span>' + F.mLabel(m) + '</span><div class="bar" style="position:relative;height:8px"><i style="width:' + Math.min(100, 100 * done / hi) + '%"></i><span style="position:absolute;top:-3px;bottom:-3px;left:' + Math.min(100, 100 * pl / hi) + '%;width:2px;background:var(--text);opacity:.6"></span></div><span class="small" style="text-align:right;color:' + (ok ? 'var(--muted)' : 'var(--warm)') + '">' + done + ' / ' + pl + '</span></div>';
     });
     h += '</div><div class="tiny dim" style="margin-top:8px">Bar = sets done this week · tick = planned. Secondary muscles count as half a set.</div></div>';
-    h += '<div class="row wrap"><button class="btn" data-a="regen">' + I.refresh + 'Shuffle exercises</button><button class="btn ghost" data-a="planSettings">' + I.gear + 'Goals &amp; schedule</button></div>';
+    h += '<div class="row wrap"><button class="btn" data-a="regen">' + I.refresh + 'Shuffle exercises</button><button class="btn ghost" data-a="freshen">✨ Freshen accessories</button><button class="btn ghost" data-a="planSettings">' + I.gear + 'Goals &amp; schedule</button></div>';
     return h + '</div>';
   };
   const progTags = dow => (F.addonsOn ? F.addonsOn(dow) : []).map(p => ' <span class="tag" style="color:' + p.color + '">+ ' + p.icon + ' ' + esc(p.name) + '</span>').join('');
@@ -204,6 +204,7 @@
     return h + '<div class="grid two" style="display:none">';
   }
   A.planSettings = () => F.push({ t: 'planSettings' });
+  A.freshen = () => { const ch = F.rotate(true); if (!ch.length) F.toast('Nothing to rotate yet — do each workout at least once first'); F.render(); };
   A.regen = () => { if (!confirm('Pick a fresh set of exercises for every day? Your schedule and goals stay the same.')) return; F.regenerate(false); F.toast('New exercise selection generated'); F.render(); };
 
   // ---------- LIBRARY ----------

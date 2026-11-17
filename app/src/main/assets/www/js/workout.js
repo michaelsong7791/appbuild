@@ -257,6 +257,9 @@
     session.newAch = G.checkAchievements(st, session).map(x => x.id);
     session.quests = G.claimQuests(st).map(q => q.id);
     const after = G.levelOf(st.game.xp).level;
+    // clear 'new' flags on exercises just done, then rotate anything that has run its course
+    if (st.plan) st.plan.days.forEach(d => d.items.forEach(it => { if (it.isNew && session.items.some(x => x.exId === it.exId && x.sets.some(y => y.done))) delete it.isNew; }));
+    if (!a.addon && !a.oneoff && F.rotate) setTimeout(() => F.rotate(), 2600);
     F.save(true); F.syncWatch();
     F.UI.stack = [{ t: 'summary', id: session.id }]; F.UI.sheet = null; F.render();
     setTimeout(() => { if (after > before) F.levelUp(after); else F.confetti(); }, 350);

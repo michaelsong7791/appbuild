@@ -185,6 +185,22 @@
 
   function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 
+  // Movement family (so a plan doesn't get two lat pulldowns, two incline presses, …)
+  const FAM = ['pulldown', 'pull-up', 'pullup', 'chin', 'pull up', 'row', 'bench press', 'incline', 'decline', 'push-up', 'pushup', 'dip', 'military', 'shoulder press', 'overhead press', 'arnold', 'lateral raise', 'front raise', 'rear', 'face pull', 'fly', 'flye', 'crossover', 'squat', 'leg press', 'hack', 'lunge', 'split squat', 'step', 'deadlift', 'romanian', 'good morning', 'thrust', 'bridge', 'leg curl', 'leg extension', 'calf', 'curl', 'pushdown', 'skull', 'triceps extension', 'kickback', 'shrug', 'crunch', 'plank', 'twist', 'raise', 'press', 'extension'];
+  const FAM_ALIAS = { 'pullup': 'pull-up', 'chin': 'pull-up', 'pull up': 'pull-up', 'pushup': 'push-up', 'flye': 'fly', 'crossover': 'fly', 'thrust': 'bridge', 'romanian': 'deadlift' };
+  function family(e) { const n = e.n.toLowerCase(); let f = FAM.find(k => n.includes(k)) || e.pat || 'other'; f = FAM_ALIAS[f] || f; return e.pm[0] + ':' + f; }
+  // How recently/often each exercise was trained (last `days` days) → penalty map
+  function recency(sessions, days) {
+    const out = {}; const since = Date.now() - (days || 28) * 864e5;
+    (sessions || []).forEach(s => { if (s.date < since || s.addon || s.oneoff) return; const age = (Date.now() - s.date) / 864e5; const w = age < 10 ? 1 : 0.6; (s.items || []).forEach(it => { if (it.sets && it.sets.some(x => x.done)) out[it.exId] = (out[it.exId] || 0) + w; }); });
+    return out;
+  }
+  const VARIETY = {
+    stable: { noise: 6, acc: 0, main: 0, recent: 0, label: 'Stable', desc: 'Same exercises until you change them — best for tracking progress on specific lifts.' },
+    balanced: { noise: 12, acc: 3, main: 7, recent: 7, label: 'Balanced', desc: 'Main lifts stay ~6–8 weeks; accessories rotate about every 3 weeks.' },
+    high: { noise: 20, acc: 1.5, main: 4, recent: 11, label: 'High', desc: 'Accessories change every 1–2 weeks, main lifts every ~4 weeks. Most variety.' },
+  };
+
   function candidates(slot, prof, used, opts) {
     opts = opts || {};
     const eq = prof.equipment; const lvl = prof.experience;
@@ -207,7 +223,10 @@
         if (prof.goal === 'strength' && (e.eq === 'barbell') && slot.pat !== 'iso') sc += 6;
         if (fav.has(e.id)) sc += 20;
         if (used && used.has(e.id)) sc -= 100;
-        sc += r() * 6;
+        if (opts.fams && opts.fams.has(family(e))) sc -= 14;
+        if (opts.recent && opts.recent[e.id]) sc -= Math.min(3, opts.recent[e.id]) * (opts.recentW || 0);
+        if (opts.avoid && opts.avoid.has(e.id)) sc -= 40;
+        sc += r() * (opts.noise || 6);
         return { e, sc };
       }).sort((a, b) => b.sc - a.sc);
   }
@@ -224,7 +243,8 @@
 
   function itemMinutes(it) { const reps = it.unit === 'sec' ? it.repMax / 3.5 : (it.repMin + it.repMax) / 2; return (it.sets * (it.rest + 15 + reps * 3.5) + 75) / 60; }
 
-  function buildDay(tpl, prof, used, rand) {
+  function buildDay(tpl, prof, used, rand, ctx) {
+    ctx = ctx || {};
     const items = [];
     let slots = tpl.slots.slice();
     // Focus muscles: add an extra isolation slot if not already well covered.
@@ -234,11 +254,11 @@
       if (relevant && n < 2) slots.splice(Math.max(1, slots.length - 1), 0, S(fm, 'iso', [], { focus: 1 }));
     });
     slots.forEach(sl => {
-      const c = candidates(sl, prof, used, { rand });
+      const c = candidates(sl, prof, used, { rand, noise: ctx.noise, fams: ctx.fams, recent: ctx.recent, recentW: ctx.recentW });
       if (!c.length) return;
-      const e = c[0].e; used.add(e.id);
+      const e = c[0].e; used.add(e.id); if (ctx.fams) ctx.fams.add(family(e));
       const sc = e.f === 'stat' ? { sets: 3, repMin: 30, repMax: 60, rest: 60 } : scheme(prof.goal, prof.experience, e.mech === 'c' && sl.pat !== 'iso', prof.preserve, prof.repStyle);
-      items.push(Object.assign({ exId: e.id, m: sl.m, low: !!sl.low, slot: sl }, sc));
+      items.push(Object.assign({ exId: e.id, m: sl.m, low: !!sl.low, slot: sl, sl: { m: sl.m, pat: sl.pat, kw: sl.kw }, main: items.length < 2 && sl.pat !== 'iso', added: Date.now() }, sc));
     });
     // Fit to session length: drop low-priority items first, then trim sets.
     const budget = prof.sessionMin || 60;
@@ -256,16 +276,18 @@
     return { title: tpl.title, items };
   }
 
-  function generatePlan(prof, seed) {
+  function generatePlan(prof, seed, sessions) {
     seed = seed || (Date.now() & 0xffffff);
+    const V = VARIETY[prof.variety || 'balanced'] || VARIETY.balanced;
+    const ctx = { noise: V.noise, fams: new Set(), recent: recency(sessions, 21), recentW: V.recent };
     const split = prof.split && prof.split !== 'auto' ? prof.split : autoSplit(prof.smartSched !== false && prof.perWeek ? Math.min(prof.perWeek, prof.days.length) : prof.days.length, prof.experience);
     const tpls = TEMPLATES[split];
     const used = new Set(); const rand = rng(seed);
-    const days = tpls.map(t => buildDay(t, prof, used, rand));
+    const days = tpls.map(t => buildDay(t, prof, used, rand, ctx));
     // map weekdays -> template index (rotating)
     const sched = {};
     prof.days.slice().sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).forEach((dow, i) => { sched[dow] = i % days.length; });
-    return { split, seed, created: Date.now(), days, sched, cardioDays: cardioDays(prof, sched) };
+    return { split, seed, created: Date.now(), rotV: 1, days, sched, cardioDays: cardioDays(prof, sched) };
   }
 
   /** Spread N cardio sessions over the week: rest days first (not the day before a leg-heavy day if avoidable). */
@@ -276,6 +298,43 @@
     const lift = order.filter(d => sched[d] != null);
     const pickSpread = (list, k) => { if (k >= list.length) return list.slice(); const out = []; for (let i = 0; i < k; i++) out.push(list[Math.floor((i + 0.5) * list.length / k)]); return out; };
     const a = pickSpread(rest, n); return a.concat(pickSpread(lift, n - a.length));
+  }
+
+  /** Rotate exercises that have been done enough times in this plan. Mutates plan; returns list of {day, from, to, main}. */
+  function rotatePlan(plan, prof, sessions, force) {
+    const V = VARIETY[prof.variety || 'balanced'] || VARIETY.balanced;
+    if (!V.acc && !force) return [];
+    const fav = new Set(prof.favorites || []); const changes = [];
+    const real = (sessions || []).filter(s => !s.addon && !s.oneoff);
+    const recent = recency(sessions, 35);
+    const inPlan = new Set(); plan.days.forEach(d => d.items.forEach(it => inPlan.add(it.exId)));
+    const fams = new Set(); plan.days.forEach(d => d.items.forEach(it => { const e = BY[it.exId]; if (e) fams.add(family(e)); }));
+    const rand = rng((Date.now() / 864e5) | 0);
+    plan.days.forEach((d, di) => { let perDay = 0; d.items.forEach(it => {
+      if (it.finisher || fav.has(it.exId) || perDay >= (force ? 3 : 2)) return;
+      const e = BY[it.exId]; if (!e || e.cat && e.cat !== 's') return;
+      const since = it.added || plan.created || 0;
+      const n = real.filter(s => s.date >= since && s.items.some(x => x.exId === it.exId && x.sets.some(y => y.done))).length;
+      const isMain = it.main != null ? it.main : (e.mech === 'c' && d.items.indexOf(it) < 2);
+      const weeks = isMain ? V.main : V.acc; const age = (Date.now() - since) / 6048e5;
+      if (!force && (!weeks || age < weeks || n < (isMain ? 4 : 2))) return;
+      if (force && n < 1) return;
+      const sl = it.sl || S(it.m || e.pm[0], e.mech === 'c' ? (e.pat || 'iso') : 'iso', []);
+      fams.delete(family(e));
+      const avoid = new Set([it.exId].concat(it.prev || []));
+      const fams2 = new Set(fams); fams2.add(family(e)); (it.prev || []).forEach(id => BY[id] && fams2.add(family(BY[id])));
+      // mains: stay in the same movement pattern (squat→squat variant, hinge→hinge), just a different family
+      const c = candidates(sl, prof, inPlan, { rand, noise: V.noise, fams: fams2, recent, recentW: 10, avoid }).filter(x => !isMain || x.e.mech === 'c');
+      const samePat = sl.pat !== 'iso' ? c.filter(x => x.e.pat === sl.pat) : c;
+      const pick = (samePat.length ? samePat : c).find(x => x.e.id !== it.exId && x.sc > -50);
+      if (!pick) { fams.add(family(e)); return; }
+      const from = it.exId; inPlan.delete(from); inPlan.add(pick.e.id); fams.add(family(pick.e));
+      it.prev = [from].concat(it.prev || []).slice(0, 3); it.exId = pick.e.id; it.added = Date.now(); it.isNew = true; it.sl = sl; it.main = isMain;
+      if (pick.e.f === 'stat' && it.unit !== 'sec') { it.unit = 'sec'; it.repMin = 30; it.repMax = 45; }
+      else if (pick.e.f !== 'stat' && it.unit === 'sec') { delete it.unit; const sc = scheme(prof.goal, prof.experience, pick.e.mech === 'c' && sl.pat !== 'iso', prof.preserve, prof.repStyle); it.repMin = sc.repMin; it.repMax = sc.repMax; it.rest = sc.rest; }
+      changes.push({ day: di, from, to: pick.e.id, main: isMain }); perDay++;
+    }); });
+    return changes;
   }
 
   function alternatives(exId, prof, limit) {
@@ -404,7 +463,7 @@
     MUSCLES, MAJOR, EQUIPMENT, GOALS, REP_STYLE, TEMPLATES, SPLIT_LABEL, DAY, H,
     loadDb, addVariant, ex, img, involvement, all: () => DB,
     readiness, muscleFatigue, setEffort, estRpeFromVloss,
-    generatePlan, cardioDays, autoSplit, alternatives, candidates, scheme, itemMinutes, hasEquip,
+    generatePlan, rotatePlan, VARIETY, family, recency, cardioDays, autoSplit, alternatives, candidates, scheme, itemMinutes, hasEquip,
     exHistory, implCount, noLoad, suggest, detectPRs, sessionStats, kcal, weeklyMuscleSets, e1rm, increment,
     clamp, round, startOfWeek, startOfDay, isoWeek, toKg,
   };
