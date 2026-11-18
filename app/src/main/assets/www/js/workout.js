@@ -20,7 +20,7 @@
       const lowReady = opts.adapt && F.readiness().score < 55;
       const w = sug.w != null && lowReady ? E.round(sug.w * 0.9, E.increment(e, F.u()) || 1) : sug.w;
       return {
-        exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, unit: it.unit, alias: it.alias, calib: !!sug.calib, basis: sug.basis || null, e1rm: sug.e1rm || null, rec: { w, r: sug.r, why }, note: it.unit === 'sec' ? (it.finisher ? 'Conditioning finisher — go hard for the full time.' : 'Timed hold — tap ✓ to start the countdown.') : sug.note,
+        exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, unit: it.unit, alias: it.alias, calib: !!sug.calib, basis: sug.basis || null, eased: lowReady || undefined, e1rm: sug.e1rm || null, rec: { w, r: sug.r, why }, note: it.unit === 'sec' ? (it.finisher ? 'Conditioning finisher — go hard for the full time.' : 'Timed hold — tap ✓ to start the countdown.') : sug.note,
         sets: Array.from({ length: sets }, () => ({ w: it.unit === 'sec' ? null : w, r: it.unit === 'sec' ? it.repMax : sug.r, done: false })),
       };
     });
