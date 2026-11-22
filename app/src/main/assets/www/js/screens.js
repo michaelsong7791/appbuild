@@ -185,7 +185,7 @@
     const syn = s.synced || {};
     h += '<div class="card"><div class="card-h"><h3>Sync</h3></div><div class="list">' +
       '<div class="li"><span style="font-size:22px">💙</span><div class="grow">Samsung Health</div>' + (syn.hc ? '<span class="tag fresh">Saved</span>' : st.settings.hcGranted ? '<button class="btn sm" data-a="syncNow" data-id="' + s.id + '" data-which="hc">Save</button>' : '<button class="btn sm ghost" data-a="connectHealth">Connect</button>') + '</div>' +
-      '<div class="li"><span style="font-size:22px">🧡</span><div class="grow">Strava</div>' + (syn.strava ? '<span class="tag fresh">Uploaded</span>' : sv.connected ? '<button class="btn sm" data-a="syncNow" data-id="' + s.id + '" data-which="strava">Upload</button>' : '<button class="btn sm ghost" data-a="stravaSetup">Set up</button>') + '</div></div></div>';
+      '<div class="li"><span style="font-size:22px">🧡</span><div class="grow">Strava</div>' + (syn.strava ? '<span class="tag fresh">Uploaded</span>' : sv.connected ? '<button class="btn sm" data-a="syncNow" data-id="' + s.id + '" data-which="strava">Upload</button>' : '<button class="btn sm ghost" data-a="stravaSetup">Set up</button>') + '</div><div class="li"><span style="font-size:22px">🗺️</span><div class="grow">Muscle map image<div class="tiny muted">' + (syn.strava ? 'Save it and add it to the Strava activity' : 'Save or share a picture of the muscles you worked') + '</div></div><button class="btn sm" data-a="muscleCard" data-id="' + s.id + '">Create</button></div></div></div>';
     h += '</div></div>';
     if (!top.past) h += '<button class="btn primary lg block" data-a="closeSummary">Done</button>';
     return h + '</div></div></div>';

@@ -133,7 +133,7 @@ class StravaClient(private val ctx: Context, private val emit: (String, String) 
                 if (activityId > 0) {
                     runCatching { putForm("https://www.strava.com/api/v3/activities/$activityId", access, mapOf("sport_type" to sport, "name" to name, "description" to desc)) }
                     JSONObject().put("ok", true).put("activityId", activityId)
-                } else JSONObject().put("ok", true).put("pending", true)
+                } else JSONObject().put("ok", true).put("pending", true).put("uploadId", uploadId)
             } else {
                 val local = LocalDateTime.ofInstant(Instant.ofEpochMilli(start), ZoneId.systemDefault())
                 val form = mutableMapOf(
@@ -146,6 +146,15 @@ class StravaClient(private val ctx: Context, private val emit: (String, String) 
                 val res = postForm("https://www.strava.com/api/v3/activities", form, access)
                 JSONObject().put("ok", true).put("activityId", res.optLong("id"))
             }
+        }
+    }
+
+    /** Activity id for an upload that was still processing when we stopped polling. */
+    suspend fun uploadStatus(uploadId: Long): JSONObject {
+        val access = token()
+        return withContext(Dispatchers.IO) {
+            val st = getJson("https://www.strava.com/api/v3/uploads/$uploadId", access)
+            JSONObject().put("ok", true).put("activityId", st.optLong("activity_id", 0)).put("error", st.optString("error"))
         }
     }
 

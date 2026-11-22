@@ -11,8 +11,8 @@ android {
         applicationId = "app.forgefit"
         minSdk = 28
         targetSdk = 36
-        versionCode = 13
-        versionName = "1.7.3"
+        versionCode = 14
+        versionName = "1.8.0"
     }
 
     signingConfigs {

@@ -220,7 +220,7 @@
     });
     const payload = {
       id: s.id, name: 'Forge · ' + s.title, start: s.date, end: s.end, kcal: (s.energy || window.Energy.strengthEnergy(s, S)).active, exerciseType: F.addonHcType(s), sportType: F.addonStravaType(s),
-      description: st.sets + ' sets · ' + F.fmtVol(st.vol) + ' ' + (s.u || F.u()) + ' volume · ' + (s.energy || window.Energy.strengthEnergy(s, S)).total + ' kcal incl. afterburn' + (st.hrAvg ? ' · avg HR ' + st.hrAvg : '') + '\n' + lines.join('\n') + ((s.prs || []).length ? '\n🏆 ' + s.prs.length + ' PR' + (s.prs.length > 1 ? 's' : '') : ''),
+      description: st.sets + ' sets · ' + F.fmtVol(st.vol) + ' ' + (s.u || F.u()) + ' volume · ' + (s.energy || window.Energy.strengthEnergy(s, S)).total + ' kcal incl. afterburn' + (st.hrAvg ? ' · avg HR ' + st.hrAvg : '') + '\n' + lines.join('\n') + ((s.prs || []).length ? '\n🏆 ' + s.prs.length + ' PR' + (s.prs.length > 1 ? 's' : '') : '') + (F.musclesText && !s.addon && !s.oneoff ? '\n\n' + F.musclesText(s) : ''),
       hr: (s.hr || []).map(x => ({ t: x[0], bpm: x[1] })),
     };
     const res = {};
@@ -234,7 +234,7 @@
       } catch (e) { res.hcErr = e.message; }
     }
     if ((which === 'strava' || which === 'all') && UI.integrations.strava && UI.integrations.strava.connected && !s.synced.strava) {
-      try { const r = await B.call('strava.upload', payload); s.synced.strava = Date.now(); s.stravaId = r && r.activityId; res.strava = true; }
+      try { const r = await B.call('strava.upload', payload); s.synced.strava = Date.now(); s.stravaId = r && r.activityId; s.stravaUpload = r && r.uploadId; res.strava = true; }
       catch (e) { res.stravaErr = e.message; }
     }
     save(); return res;
