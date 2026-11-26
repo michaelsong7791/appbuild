@@ -302,3 +302,19 @@ h1 { font-size: 30px; line-height: 1; } h2 { font-size: 21px; } h3 { font-size: 
 .rung.cur .dot { background: var(--accent); color: var(--accent-ink); animation: beat 1.6s ease-in-out infinite; }
 .rung.lock { opacity: .45; }
 .rung .thumb { background-color: #fff; background-size: cover; background-position: center; }
+
+/* ---------- v1.9 ---------- */
+.warm { background: color-mix(in oklab, var(--info) 8%, var(--surface)); border: 1px solid color-mix(in oklab, var(--info) 25%, var(--line)); border-radius: 14px; padding: 10px 12px; }
+.wchip { border: 1px solid var(--line); background: var(--surface2); color: var(--text); border-radius: 10px; padding: 7px 10px; font: 600 14px var(--body, inherit); }
+.wchip.cur { border-color: var(--info); color: var(--info); }
+.wchip.done { opacity: .55; text-decoration: line-through; }
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.photo-grid .ph { position: relative; padding: 0; border: 2px solid transparent; border-radius: 12px; overflow: hidden; background: var(--surface2); aspect-ratio: 3/4; }
+.photo-grid .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-grid .ph span { position: absolute; left: 0; right: 0; bottom: 0; font-size: 11px; padding: 3px 6px; background: rgba(0,0,0,.55); color: #fff; }
+.photo-grid .ph.sel { border-color: var(--accent); }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.cal i { font-style: normal; text-align: center; font-size: 12px; padding: 6px 0; border-radius: 8px; background: var(--surface2); color: var(--dim); }
+.cal i:empty { background: none; }
+.cal i.h { background: none; color: var(--muted); font-weight: 700; font-size: 11px; }
+.cal i.on { background: var(--accent); color: var(--accent-ink); font-weight: 700; }

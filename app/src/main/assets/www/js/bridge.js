@@ -47,6 +47,15 @@
         case 'watch.status': return ok({ connected: true, name: 'Galaxy Watch9 (sim)' });
         case 'watch.send': Mock.simWatch(a); return ok({ ok: true });
         case 'share.backup': { const b = new Blob([a.json], { type: 'application/json' }); const u = URL.createObjectURL(b); const l = document.createElement('a'); l.href = u; l.download = 'forge-backup.json'; l.click(); return ok({ ok: true }); }
+        case 'backup.status': return ok(JSON.parse(localStorage.getItem('mock.backup') || '{"folder":null,"last":0,"private":[]}'));
+        case 'backup.write': { const st = JSON.parse(localStorage.getItem('mock.backup') || '{"folder":null,"last":0,"private":[]}'); const name = 'forge-backup-' + new Date().toISOString().slice(0, 10) + '.json'; st.last = Date.now(); st.lastWhere = 'app,downloads'; st.private = [name].concat(st.private.filter(x => x !== name)).slice(0, 8); localStorage.setItem('mock.backup', JSON.stringify(st)); Mock.backups[name] = a.json; return ok({ ok: true, name, where: ['app', 'downloads'] }); }
+        case 'backup.readPrivate': return Mock.backups[a.name] ? ok({ json: Mock.backups[a.name] }) : Promise.reject(new Error('Backup not found'));
+        case 'backup.pickFolder': { const st = JSON.parse(localStorage.getItem('mock.backup') || '{"last":0,"private":[]}'); st.folder = 'Drive/Forge'; localStorage.setItem('mock.backup', JSON.stringify(st)); return ok(st); }
+        case 'backup.clearFolder': { const st = JSON.parse(localStorage.getItem('mock.backup') || '{"last":0,"private":[]}'); st.folder = null; localStorage.setItem('mock.backup', JSON.stringify(st)); return ok(st); }
+        case 'rest.show': case 'rest.clear': case 'widget.update': Mock.last[method] = a; return ok({});
+        case 'photos.save': Mock.photos[a.id] = 'data:image/jpeg;base64,' + a.b64; return ok({ ok: true, url: Mock.photos[a.id] });
+        case 'photos.delete': delete Mock.photos[a.id]; return ok({ ok: true });
+        case 'media.saveImage': case 'media.shareImage': Mock.last[method] = { name: a.name }; return ok({ ok: true, saved: true });
         case 'sync.inbox': return ok({ sessions: [], activities: [], body: [] });
         case 'sync.schedule': return ok({ ok: true });
         case 'app.keepAwake': return ok({});
@@ -55,6 +64,7 @@
         default: return Promise.reject(new Error('Not available in preview: ' + method));
       }
     },
+    backups: {}, photos: {}, last: {},
     simWatch(state) {
       if (!new URLSearchParams(location.search).has('simwatch')) return;
       clearInterval(Mock.watchTimer);
@@ -67,6 +77,7 @@
     },
   };
 
+  window.__forgeMock = Mock;
   window.Bridge = {
     native: !!N,
     call, on,

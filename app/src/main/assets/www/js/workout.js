@@ -9,7 +9,11 @@
   F.buildSession = (day, opts) => {
     opts = opts || {};
     const st = S(); const fat = F.fatigue();
-    const items = day.items.map(it => {
+    const real = !opts.addon && !opts.oneoff;
+    const deload = real && F.deloadActive && F.deloadActive();
+    const painNotes = [];
+    const src = real && F.applyPain ? F.applyPain(day.items, st, painNotes) : day.items;
+    const items = src.map(it => {
       const sug = E.suggest(st.sessions, it, F.u(), st);
       const e = E.ex(it.exId);
       const ps = window.Load && !opts.addon && !opts.oneoff ? window.Load.prescribeSets(st, it, fat) : { sets: it.sets, why: [] };
@@ -19,12 +23,20 @@
       if (opts.adapt && pmF >= 55 && sets > 2 && !why.some(x => x.includes('recovering'))) { sets -= 1; adapted = true; why.push('−1: adaptive mode'); }
       const lowReady = opts.adapt && F.readiness().score < 55;
       const w = sug.w != null && lowReady ? E.round(sug.w * 0.9, E.increment(e, F.u()) || 1) : sug.w;
-      return {
-        exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, unit: it.unit, alias: it.alias, calib: !!sug.calib, basis: sug.basis || null, eased: lowReady || undefined, e1rm: sug.e1rm || null, rec: { w, r: sug.r, why }, note: it.unit === 'sec' ? (it.finisher ? 'Conditioning finisher — go hard for the full time.' : 'Timed hold — tap ✓ to start the countdown.') : sug.note,
-        sets: Array.from({ length: sets }, () => ({ w: it.unit === 'sec' ? null : w, r: it.unit === 'sec' ? it.repMax : sug.r, done: false })),
+      if (deload && sets > 2) { sets = Math.max(2, Math.round(sets * 0.6)); why.push('deload week: fewer sets'); }
+      if (it.painSore && sets > 2) { sets--; why.push('−1: ' + it.painSore + ' is sore'); }
+      let wD = w; if (wD != null && (deload || it.painSore)) wD = E.round(wD * 0.9, E.increment(e, F.u()) || 1);
+      const item = {
+        exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, unit: it.unit, alias: it.alias, ss: it.ss || undefined, painNote: it.painNote || undefined, calib: !!sug.calib, basis: sug.basis || null, eased: lowReady || undefined, e1rm: sug.e1rm || null, rec: { w, r: sug.r, why }, note: it.unit === 'sec' ? (it.finisher ? 'Conditioning finisher — go hard for the full time.' : 'Timed hold — tap ✓ to start the countdown.') : sug.note,
+        sets: Array.from({ length: sets }, () => ({ w: it.unit === 'sec' ? null : wD, r: it.unit === 'sec' ? it.repMax : sug.r, done: false })),
       };
+      if (deload && item.rec && item.rec.w != null) { item.rec.w = wD; item.note = 'Deload week — ~10% lighter, fewer sets. Leave 3–4 reps in the tank. ' + (item.note || ''); }
+      if (it.painSore && item.rec && item.rec.w != null) { item.rec.w = wD; item.note = it.painSore + ' is flagged sore — eased 10%. Stop if it hurts. ' + (item.note || ''); }
+      if (it.painNote) item.note = it.painNote + ' ' + (item.note || '');
+      return item;
     });
-    return { id: 's' + Date.now().toString(36), date: Date.now(), title: day.title, dayIdx: opts.dayIdx, planned: !!opts.planned, addon: opts.addon || null, oneoff: !!opts.oneoff, u: F.u(), items, cur: 0, hr: [], rest: null, watch: { reps: 0, tempo: [], peaks: [] }, setStart: Date.now() };
+    if (real && F.addWarmups) F.addWarmups(items, st);
+    return { id: 's' + Date.now().toString(36), date: Date.now(), deload: deload || undefined, painNotes: painNotes.length ? painNotes : undefined, title: day.title, dayIdx: opts.dayIdx, planned: !!opts.planned, addon: opts.addon || null, oneoff: !!opts.oneoff, u: F.u(), items, cur: 0, hr: [], rest: null, watch: { reps: 0, tempo: [], peaks: [] }, setStart: Date.now() };
   };
 
   F.startWorkout = (dayIdx, opts) => {
@@ -128,7 +140,16 @@
     const moreHere = it.sets.some(x => !x.done);
     const lastOverall = !moreHere && a.items.slice(i + 1).every(x => x.sets.every(y => y.done)) && a.items.slice(0, i).every(x => x.sets.every(y => y.done));
     if (!moreHere && !lastOverall) { const nx = a.items.findIndex((x, k) => k > i && x.sets.some(y => !y.done)); a.cur = nx >= 0 ? nx : a.items.findIndex(x => x.sets.some(y => !y.done)); }
-    if (!lastOverall) startRest(it.rest, { i, j }); else a.rest = null;
+    let restSec = it.rest;
+    if (it.ss && !lastOverall) {
+      // Superset: A1 → B1 (short transition) → full rest → A2 → B2 …
+      const g = a.items.map((x, k) => k).filter(k => a.items[k].ss === it.ss);
+      const dc = k => a.items[k].sets.filter(y => y.done).length; const open = k => a.items[k].sets.some(y => !y.done);
+      const nxt = g.slice(g.indexOf(i) + 1).find(k => open(k) && dc(k) < dc(i));
+      if (nxt != null) { a.cur = nxt; restSec = Math.min(15, it.rest); }
+      else { const first = g.filter(open).sort((x, y) => dc(x) - dc(y))[0]; if (first != null) { a.cur = first; restSec = Math.max(...g.map(k => a.items[k].rest || 60)); } }
+    }
+    if (!lastOverall) startRest(restSec, { i, j }); else a.rest = null;
     F.save(true); F.render(); F.syncWatch();
     if (!fromWatch) F.snack('Set ' + (j + 1) + ' logged', 'Undo', () => { const a2 = S().active; if (!a2) return; const s2 = a2.items[i].sets[j]; s2.done = false; delete s2.t; a2.rest = null; a2.cur = i; clearInterval(restTick); F.save(true); F.render(); F.syncWatch(); });
     if (lastOverall) setTimeout(() => F.sheet({ t: 'finish' }), 300);
@@ -155,6 +176,11 @@
   function startRest(sec, from) {
     const a = S().active; a.rest = { until: Date.now() + sec * 1000, total: sec, from, hrStart: liveHr };
     startRestTicker();
+    if (S().settings.restNotify !== false) {
+      const nx = a.items[a.cur]; const ne = nx && E.ex(nx.exId); const nj = nx ? curSetIdx(nx) : 0; const ns = nx && nx.sets[Math.min(nj, nx.sets.length - 1)];
+      const nextTxt = ne ? 'Next: ' + (nx.alias || ne.n) + ' · set ' + (nj + 1) + '/' + nx.sets.length + (ns && ns.w ? ' · ' + F.fmtW(ns.w) + ' ' + a.u : '') + (ns && ns.r ? ' × ' + ns.r : '') : '';
+      B.call('rest.show', { until: a.rest.until, title: a.title, next: nextTxt }).catch(() => { });
+    }
   }
   function startRestTicker() {
     clearInterval(restTick);
@@ -174,6 +200,7 @@
   function endRest(auto) {
     const a = S().active; if (!a || !a.rest) return;
     a.rest = null; a.setStart = Date.now(); clearInterval(restTick);
+    if (!auto) B.call('rest.clear', {}).catch(() => { });
     if (auto && S().settings.restVibrate) B.vibrate(450);
     F.save(); F.render(); F.syncWatch();
     // Interval programs (Tabata etc.): roll straight into the next timed set
@@ -242,7 +269,7 @@
     a.end = Date.now(); a.rest = null;
     // keep only exercises with done sets
     a.items = a.items.filter(it => it.sets.some(s => s.done)).map(it => ({ exId: it.exId, repMin: it.repMin, repMax: it.repMax, rest: it.rest, unit: it.unit, alias: it.alias, feel: it.feel || null, sets: it.sets.filter(s => s.done).map(s => { const o = Object.assign({}, s); delete o.rEdited; return o; }) }));
-    const session = { id: a.id, date: a.date, end: a.end, title: a.title, dayIdx: a.dayIdx, planned: a.planned, addon: a.addon, oneoff: a.oneoff || undefined, u: a.u, items: a.items, hr: a.hr, hrSource: a.hr.length ? 'watch' : null, synced: {} };
+    const session = { id: a.id, date: a.date, end: a.end, deload: a.deload, title: a.title, dayIdx: a.dayIdx, planned: a.planned, addon: a.addon, oneoff: a.oneoff || undefined, u: a.u, items: a.items, hr: a.hr, hrSource: a.hr.length ? 'watch' : null, synced: {} };
     if (!session.items.length) { st.active = null; F.save(true); F.UI.stack = []; F.UI.sheet = null; F.render(); F.syncWatch(); F.toast('No sets logged — workout discarded'); return; }
     session.prs = E.detectPRs(st.sessions, session);
     session.energy = window.Energy.strengthEnergy(session, st);
@@ -251,7 +278,7 @@
     const xp = G.sessionXp(session, session.prs, session.planned);
     session.xp = xp.total; session.xpLines = xp.lines;
     st.game.xp += xp.total;
-    st.sessions.push(session); st.active = null;
+    st.sessions.push(session); st.active = null; B.call('rest.clear', {}).catch(() => { });
     G.addMuscleXp(st, session);
     if (F.checkSkills) session.skills = F.checkSkills(st).map(x => x.l.id + ':' + x.i);
     session.newAch = G.checkAchievements(st, session).map(x => x.id);

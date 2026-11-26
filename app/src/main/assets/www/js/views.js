@@ -57,6 +57,7 @@
     let h = '<div class="page">';
     h += '<div class="row between"><div class="hello">' + levelRing() + '<div><div class="muted small">' + hi + (p.name ? ', ' + esc(p.name) : '') + '</div><h2>' + esc(G.title(L.level)) + '</h2><div class="tiny dim">' + L.into + ' / ' + L.need + ' XP to level ' + (L.level + 1) + '</div></div></div>';
     h += '<div class="streak" title="Weekly streak">' + I.flame.replace('<svg', '<svg width="18" height="18" style="color:var(--accent)"') + '<span class="num" style="font-size:18px">' + ws.streak + '</span><span class="tiny muted">WK</span></div></div>';
+    if (F.todayExtras) { const tx = F.todayExtras(); if (tx) h += '<div class="grid two">' + tx + '</div>'; }
     h += '<div class="grid side"><div class="col" style="gap:var(--gap)">' + todayCard() + weekStrip() + '</div><div class="col" style="gap:var(--gap)">' + readinessCard() + recoveryCard() + '</div></div>';
     h += quickRow() + extrasRow();
     h += questsCard();
@@ -259,10 +260,12 @@
   V.progress = () => {
     const st = S(); const ss = st.sessions.slice().sort((a, b) => b.date - a.date);
     let h = '<div class="page"><h1>Progress</h1>';
-    const seg = F.UI.prog === 'body' || F.UI.prog === 'energy' ? F.UI.prog : 'overview';
-    h += '<div class="seg" style="max-width:460px">' + [['overview', 'Training'], ['body', 'Body'], ['energy', 'Calories']].map(([k, l]) => '<button class="' + (seg === k ? 'on' : '') + '" data-a="progSeg" data-s="' + k + '">' + l + '</button>').join('') + '</div>';
+    const seg = ['body', 'energy', 'photos', 'report'].includes(F.UI.prog) ? F.UI.prog : 'overview';
+    h += '<div class="seg" style="max-width:620px">' + [['overview', 'Training'], ['body', 'Body'], ['photos', 'Photos'], ['energy', 'Calories'], ['report', 'Report']].map(([k, l]) => '<button class="' + (seg === k ? 'on' : '') + '" data-a="progSeg" data-s="' + k + '">' + l + '</button>').join('') + '</div>';
     if (seg === 'body') return h + V.bodyPanel() + '</div>';
     if (seg === 'energy') return h + V.energyPanel() + '</div>';
+    if (seg === 'photos' && V.photosPanel) return h + V.photosPanel() + '</div>';
+    if (seg === 'report' && V.reportPanel) return h + V.reportPanel() + '</div>';
     if (!ss.length) return h + '<div class="card" style="text-align:center;padding:40px 20px"><div style="font-size:44px">📈</div><h2 style="margin:8px 0">No workouts yet</h2><p class="muted">Finish your first session and your charts, PRs and history will appear here.</p></div></div>';
     const wk = E.startOfWeek(Date.now()); const thisW = ss.filter(s => s.date >= wk);
     const vol = thisW.reduce((a, s) => a + E.sessionStats(s).vol, 0); const mins = thisW.reduce((a, s) => a + E.sessionStats(s).dur, 0);
@@ -328,15 +331,19 @@
     h += setRow('Auto-save workouts to Samsung Health', 'autoHc'); h += setRow('Auto-upload workouts to Strava', 'autoStrava');
     h += setRow('Background sync (when Forge is closed)', 'bgSync');
     if (st.settings.bgSync !== false) { h += '<div class="li"><div class="grow">Background sync every</div><div class="seg" style="width:190px">' + [15, 30, 60].map(m => '<button class="' + ((st.settings.bgMinutes || 15) === m ? 'on' : '') + '" data-a="bgMin" data-m="' + m + '">' + m + 'm</button>').join('') + '</div></div>'; h += setRow('Notify me about new imported activities', 'bgNotify'); }
-    h += setRow('Vibrate when rest ends', 'restVibrate'); h += setRow('Keep screen on during workouts', 'keepAwake');
+    h += setRow('Vibrate when rest ends', 'restVibrate'); h += setRowOn('Rest timer on lock screen', 'restNotify'); h += setRowOn('Warm-up sets for heavy lifts', 'warmups'); h += setRowOn('Suggest deload weeks', 'deload'); h += setRow('Keep screen on during workouts', 'keepAwake');
     h += '<div class="li"><div class="grow">Units</div><div class="seg" style="width:140px"><button class="' + (p.units === 'kg' ? 'on' : '') + '" data-a="units" data-u="kg">kg</button><button class="' + (p.units === 'lb' ? 'on' : '') + '" data-a="units" data-u="lb">lb</button></div></div>';
     h += '<div class="li"><div class="grow">Bodyweight</div><input class="input" style="width:110px;text-align:center" type="number" inputmode="decimal" value="' + (p.bodyweight || '') + '" data-ch="bw"><span class="muted small">' + p.units + '</span></div>';
     h += '<div class="li"><div class="grow">Name</div><input class="input" style="width:160px" value="' + esc(p.name || '') + '" data-ch="pname"></div>';
     h += '</div></div>';
+    if (F.backupCard) h += F.backupCard();
+    if (F.painCard) h += F.painCard();
     h += '<div class="card"><div class="card-h"><h3>Your data</h3></div><div class="row wrap"><button class="btn" data-a="exportData">' + I.download + 'Export backup</button><label class="btn ghost">' + I.upload + 'Import<input type="file" accept="application/json,.json" style="display:none" data-ch="importData"></label><button class="btn danger" data-a="resetAll">Reset</button></div><p class="tiny dim" style="margin:10px 0 0">Everything stays on your phone. Exercise demos: Free Exercise DB (public domain).</p></div></div></div>';
     return h + '</div>';
   };
   const intRow = (ic, name, sub, right) => '<div class="li"><div style="font-size:24px;width:32px;text-align:center">' + ic + '</div><div class="grow"><b>' + name + '</b><div class="small muted">' + sub + '</div></div>' + right + '</div>';
+  const setRowOn = (lbl, key) => '<div class="li"><div class="grow">' + lbl + '</div><button class="switch ' + (S().settings[key] !== false ? 'on' : '') + '" data-a="toggleOn" data-k="' + key + '"></button></div>';
+  A.toggleOn = d => { const st = S(); st.settings[d.k] = st.settings[d.k] === false; F.save(); F.render(); };
   const setRow = (lbl, key) => '<div class="li"><div class="grow">' + lbl + '</div><button class="switch ' + (S().settings[key] !== false && S().settings[key] !== undefined ? 'on' : '') + '" data-a="toggleSet2" data-k="' + key + '"></button></div>';
   A.toggleSet2 = d => { const st = S(); st.settings[d.k] = !(st.settings[d.k] !== false && st.settings[d.k] !== undefined ? true : false); if (d.k === 'bgSync' || d.k === 'bgNotify') F.scheduleSync(); F.save(); F.render(); };
   A.refreshInt = () => F.refreshIntegrations();

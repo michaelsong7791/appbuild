@@ -23,6 +23,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.health.connect.client.PermissionController
 import androidx.webkit.WebViewAssetLoader
 import kotlinx.coroutines.CompletableDeferred
+import androidx.core.content.FileProvider
+import java.io.File
 
 class MainActivity : ComponentActivity() {
 
@@ -45,12 +47,21 @@ class MainActivity : ComponentActivity() {
         ) runCatching { notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS) }
     }
 
-    // <input type=file> support for backup import
+    // <input type=file> support: backup import, progress photos (gallery or camera)
     private var fileCallback: ValueCallback<Array<Uri>>? = null
     private val filePicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         fileCallback?.onReceiveValue(if (uri != null) arrayOf(uri) else null)
         fileCallback = null
     }
+    private var cameraUri: Uri? = null
+    private val camera = registerForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        fileCallback?.onReceiveValue(if (ok && cameraUri != null) arrayOf(cameraUri!!) else null)
+        fileCallback = null
+    }
+
+    // Backup folder picker -> resolved by Bridge
+    var treeResult: CompletableDeferred<Uri?>? = null
+    val treePicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> treeResult?.complete(uri) }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,6 +89,7 @@ class MainActivity : ComponentActivity() {
 
         val assetLoader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .addPathHandler("/photos/", WebViewAssetLoader.InternalStoragePathHandler(this, File(filesDir, "photos").apply { mkdirs() }))
             .build()
 
         web.settings.apply {
@@ -110,7 +122,15 @@ class MainActivity : ComponentActivity() {
             ): Boolean {
                 fileCallback?.onReceiveValue(null)
                 fileCallback = callback
-                return try { filePicker.launch("*/*"); true } catch (e: Exception) { fileCallback = null; false }
+                val image = params.acceptTypes.any { it.startsWith("image") }
+                return try {
+                    if (image && params.isCaptureEnabled) {
+                        val f = File(File(cacheDir, "camera").apply { mkdirs() }, "photo-" + System.currentTimeMillis() + ".jpg")
+                        cameraUri = FileProvider.getUriForFile(this@MainActivity, packageName + ".files", f)
+                        camera.launch(cameraUri!!)
+                    } else filePicker.launch(if (image) "image/*" else "*/*")
+                    true
+                } catch (e: Exception) { fileCallback = null; false }
             }
         }
 
@@ -141,17 +161,20 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntent(intent: Intent) {
         val data = intent.data ?: return
+        if (data.scheme == "forgefit" && data.path == "/start") { bridge.emit("widgetStart", "{}"); return }
         if (data.scheme == "forgefit") bridge.strava.handleRedirect(data)
     }
 
     override fun onResume() {
         super.onResume()
         bridge.wear.start()
+        bridge.rest.foreground = true
         if (pageReady) bridge.emit("resume", "{}")
     }
 
     override fun onPause() {
         bridge.wear.stop()
+        bridge.rest.foreground = false
         super.onPause()
     }
 

@@ -32,6 +32,9 @@ class Bridge(private val act: MainActivity) {
     val health = HealthBridge(act, act)
     val strava = StravaClient(act) { type, json -> emit(type, json) }
     val wear = WearLink(act) { json -> emit("watch", json) }
+    val backups = Backups(act)
+    val rest = RestNotifier(act)
+    val photos = Photos(act)
 
     private val stateFile = File(act.filesDir, "state.json")
 
@@ -94,6 +97,20 @@ class Bridge(private val act: MainActivity) {
         "watch.send" -> wear.send(a)
 
         "share.backup" -> shareBackup(a.getString("json"))
+        "backup.status" -> backups.status()
+        "backup.write" -> withContext(Dispatchers.IO) { backups.write(a.getString("json"), a.optInt("keep", 8)) }
+        "backup.readPrivate" -> withContext(Dispatchers.IO) { backups.readPrivate(a.getString("name")) }
+        "backup.pickFolder" -> {
+            val d = kotlinx.coroutines.CompletableDeferred<Uri?>(); act.treeResult = d
+            act.runOnUiThread { runCatching { act.treePicker.launch(null) }.onFailure { d.complete(null) } }
+            val u = d.await(); if (u != null) backups.setTree(u); backups.status()
+        }
+        "backup.clearFolder" -> { backups.setTree(null); backups.status() }
+        "rest.show" -> { act.runOnUiThread { rest.show(a.getLong("until"), a.optString("title"), a.optString("next")) }; JSONObject() }
+        "rest.clear" -> { act.runOnUiThread { rest.clear() }; JSONObject() }
+        "photos.save" -> withContext(Dispatchers.IO) { photos.save(a.getString("id"), a.getString("b64")) }
+        "photos.delete" -> withContext(Dispatchers.IO) { photos.delete(a.getString("id")) }
+        "widget.update" -> { ForgeWidget.push(act, a); JSONObject() }
         "media.saveImage" -> saveImage(a.getString("b64"), a.getString("name"))
         "media.shareImage" -> shareImage(a.getString("b64"), a.getString("name"), a.optString("text"))
         "app.keepAwake" -> { act.setKeepAwake(a.optBoolean("on")); JSONObject() }

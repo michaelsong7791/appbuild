@@ -305,6 +305,7 @@
     h += '<div class="stats" style="grid-template-columns:1fr 1fr"><div class="stat"><div class="num">' + (Math.round(wk * 10) / 10) + '</div><div class="lbl">Hard sets, 7 days</div></div><div class="stat"><div class="num">' + g[0] + '–' + g[1] + '</div><div class="lbl">Weekly target</div></div></div>';
     h += '<div class="tiny muted" style="margin:14px 0 4px;font-weight:700;letter-spacing:.08em">TRAINED RECENTLY</div>' + (hits.length ? hits.slice(0, 6).map(x => '<div class="li small"><span class="muted" style="width:84px">' + F.fmtDate(x.t) + '</span><span class="grow">' + esc(x.name) + '</span><span class="muted">' + (x.sets ? x.sets + ' sets' : 'cardio') + '</span></div>').join('') : '<div class="small muted">Nothing in the last 7 days.</div>');
     h += '<div class="tiny muted" style="margin:14px 0 4px;font-weight:700;letter-spacing:.08em">GOOD EXERCISES FOR IT</div>' + sugg.map(e => '<button class="exrow" data-a="ex" data-id="' + e.id + '">' + F.thumb(e.id) + '<div class="grow"><div class="nm ellipsis">' + esc(e.n) + '</div><div class="sub ellipsis">' + esc(F.topSubs(e, 2)) + '</div></div></button>').join('');
+    if (F.painButtons) h += F.painButtons(m);
     return h;
   };
 

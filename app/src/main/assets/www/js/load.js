@@ -145,7 +145,10 @@
   }
 
   /** Main entry: { w, r, note, basis, calib, e1rm, rir } — or null for exercises without external load. */
+  // Deload-week sessions are deliberately easy: keep them out of strength estimates and progression.
+  const noDeload = st => (st.sessions || []).some(s => s.deload) ? Object.assign({}, st, { sessions: st.sessions.filter(s => !s.deload) }) : st;
   function prescribe(st, item) {
+    st = noDeload(st);
     const e = E().ex(item.exId); if (!e) return null;
     if (item.unit === 'sec' || e.f === 'stat' || E().noLoad(e) || e.cat === 'st') return null;
     const prof = st.profile; const units = prof.units || 'kg'; const rir = goalRir(prof);
@@ -247,6 +250,7 @@
   /** Working sets for today: standard 3 for a new exercise, then tuned from that exercise's latest history
       (how it felt, rep drop-off, plateaus, realistic weekly volume for the muscle, current recovery). Max ±1 per session. */
   function prescribeSets(st, item, fat) {
+    st = noDeload(st);
     const base = item.sets || 3; const e = E().ex(item.exId);
     if (!e || item.unit === 'sec' || item.finisher || e.cat === 'st') return { sets: base, why: [] };
     const h = E().exHistory(st.sessions, e.id); const why = [];
