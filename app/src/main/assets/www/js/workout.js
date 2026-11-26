@@ -130,6 +130,7 @@
     }
     a.watch = { reps: 0, tempo: [], peaks: [] };
     if (s.r < it.repMin && !s.rpe && !(it.calib && j === 0)) retune(it, j);
+    else if (it.calib && j === 0 && !s.rpe && E.noLoad(E.ex(it.exId))) retune(it, j);
     // Live PR check
     const hist = E.exHistory(S().sessions, it.exId);
     if (hist.length && s.w > 0) {

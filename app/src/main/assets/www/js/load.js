@@ -73,6 +73,30 @@
     return Math.max(min, Math.floor(w / step + 0.3) * step);
   }
 
+  // Clean rep targets: people train to 5, 6, 8, 10, 12, 15… — not 9, 11 or 13 because of how the plates rounded.
+  const CLEAN = [3, 5, 6, 8, 10, 12, 15, 20, 25, 30];
+  function aimFor(lo, hi) {
+    const t = lo + (hi - lo) * 0.4; const c = CLEAN.filter(x => x >= lo && x <= hi);
+    return c.length ? c.reduce((a, b) => Math.abs(b - t) < Math.abs(a - t) ? b : a) : Math.round(t);
+  }
+  const cleanAtMost = (n, lo) => { const c = CLEAN.filter(x => x <= n && x >= lo); return c.length ? Math.max(...c) : n; };
+  function stepOf(w, e, units) {
+    const inc = E().increment(e, units) || (units === 'lb' ? 5 : 2.5);
+    return e.eq === 'dumbbell' ? (units === 'lb' ? 5 : (w < 10 ? 1 : 2)) : e.eq === 'barbell' || e.eq === 'ezbar' ? (units === 'lb' ? 5 : 2.5) : inc;
+  }
+  /** Weight + reps for a strength estimate: hold the clean rep target and pick the loadable weight that fits it;
+      only when the weight jump is too big (light dumbbells) do the reps move — and then to another clean number. */
+  function pick(one, rirEff, lo, hi, e, units) {
+    const aim = aimFor(lo, hi); const cap = w => 30 * (one / w - 1) - rirEff;
+    const ideal = weightFor(one, aim, rirEff); const st = stepOf(ideal, e, units); const min = (MIN[units] || MIN.kg)[e.eq] || 0;
+    const down = Math.max(min, Math.floor(ideal / st + 1e-6) * st); const up = down + st;
+    if (cap(up) >= aim - 0.35) return { w: up, r: aim };            // rounding noise: the next plate up still fits
+    const cd = cap(down);
+    if (cd - aim <= 2.5 || down <= min) return { w: down, r: down <= min && cd - aim > 2.5 ? Math.min(hi, cleanAtMost(ffloor(cd), aim)) : aim };
+    const cu = cap(up);
+    if (cu >= lo) return { w: up, r: Math.max(lo, cleanAtMost(ffloor(cu), lo)) };
+    return { w: down, r: Math.min(hi, cleanAtMost(ffloor(cd), aim)) };
+  }
   const goalRir = prof => (E().GOALS[prof.goal] || {}).rir || 2;
   const fatigueAdj = it => Math.max(0, ((Array.isArray(it.sets) ? it.sets.length : it.sets) || 3) - 1) / 2;
   const ffloor = x => Math.floor(x + 1e-6); // guard against 11.999… → 11
@@ -150,17 +174,11 @@
   function prescribe(st, item) {
     st = noDeload(st);
     const e = E().ex(item.exId); if (!e) return null;
-    if (item.unit === 'sec' || e.f === 'stat' || E().noLoad(e) || e.cat === 'st') return null;
+    if (item.unit === 'sec' || e.f === 'stat' || e.cat === 'st') return null;
+    if (E().noLoad(e)) return prescribeBW(st, item, e);
     const prof = st.profile; const units = prof.units || 'kg'; const rir = goalRir(prof);
     const repMin = item.repMin, repMax = item.repMax; const own = ownE1rm(st.sessions, e.id, units);
-    const fit = (one, rirT) => {
-      // heaviest rounded weight that still allows at least repMin at the target effort, aiming for the upper-middle of the range
-      const aim = Math.round(repMin + (repMax - repMin) * 0.6);
-      let w = roundW(weightFor(one, aim, rirT), e, units);
-      let r = clamp(ffloor(30 * (one / w - 1) - rirT), repMin, repMax);
-      if (30 * (one / w - 1) - rirT < repMin - 0.5) { w = roundW(weightFor(one, repMin, rirT), e, units); r = repMin; }
-      return { w, r };
-    };
+    const fit = (one, rirT) => pick(one, rirT, repMin, repMax, e, units);
     if (own) {
       const lowerBody = !!standard(e).lower;
       const L = lastItem(st.sessions, e.id, units); const prevW = L.workW;
@@ -182,13 +200,15 @@
         // Sets get harder as fatigue builds (~1 rep per set), so aim the first set a bit easier: across N sets the
         // average effort then lands on the goal's reps-in-reserve.
         ({ w, r } = fit(one, rir + fatigueAdj(item)));
+        // same weight as last time and effort was on target → keep the reps you actually did (no arbitrary drop)
+        if (bump === 0 && Math.abs(w - prevW) < 0.01 && work.length) r = clamp(Math.min(...work.map(x => x.r)), repMin, repMax);
         // after an easy / top-of-range session, never hand back the same (or a lighter) weight
         if (bump > 0 && w <= prevW) {
           const nextW = roundW(prevW + (E().increment(e, units) || 2.5), e, units);
-          if ((nextW - prevW) / Math.max(1, prevW) > 0.06 && !topHit) {
+          if ((nextW - prevW) / Math.max(1, prevW) > 0.06 && !topHit && !(avgRir != null && avgRir >= rir + 3)) {
             // big jump relative to the load (e.g. 16 → 18 kg dumbbells): earn it with reps first
             w = roundW(prevW, e, units); r = clamp(Math.min(...work.map(x => x.r)) + 1, repMin, repMax); why += ' → more reps before the next weight jump';
-          } else { w = nextW; r = clamp(ffloor(30 * (one / w - 1) - rir - fatigueAdj(item)), repMin, repMax); }
+          } else { w = nextW; r = Math.max(repMin, cleanAtMost(clamp(ffloor(30 * (one / w - 1) - rir - fatigueAdj(item)), repMin, repMax), repMin)); }
         }
       }
       const d = Math.round((w - prevW) * 10) / 10;
@@ -207,25 +227,69 @@
     return { w, r, note: 'First time — start at ' + w + ' ' + units + ' (' + why + '). Rate set 1 and Forge sets the rest.', basis: tr && tr.conf >= 0.5 ? 'transfer' : 'standard', e1rm: Math.round(base.v), rir, calib: true };
   }
 
+  /** Bodyweight & band exercises: reps are the only dial. First time = calibrate on set 1; then +1 rep when every set hit target. */
+  const HARD = /pull-?ups?\b|pullups|chin|dips?\b|pistol|handstand|muscle.?up|one.?arm|l-sit|nordic|dragon|lever|archer|planche|inverted row/i;
+  function prescribeBW(st, item, e) {
+    const prof = st.profile; const rir = goalRir(prof); const lo = item.repMin, hi = item.repMax; const exp = prof.experience || 'intermediate';
+    const L = lastItem(st.sessions, e.id, prof.units || 'kg');
+    if (!L) {
+      const hard = HARD.test(e.n) || e.lv === 'e';
+      let r = hard ? { beginner: 3, intermediate: 6, advanced: 10 }[exp] || 6
+        : Math.max(5, cleanAtMost(aimFor(lo, hi) + ({ beginner: -4, intermediate: 0, advanced: 3 }[exp] || 0), 5));
+      if (e.lv === 'i' && !hard && exp === 'beginner') r = Math.max(5, r - 2);
+      return { w: null, r, calib: true, basis: 'standard',
+        note: 'First time — set 1: do as many clean reps as you can with ~' + rir + ' left (aim ≈' + r + '). Forge sets the remaining sets from it.' + (hard ? ' Use a band or the easier variation if you can\'t get 3.' : '') };
+    }
+    const work = L.sets.filter(x => x.r > 0); const reps = work.map(x => x.r);
+    const rirs = work.map(rirOf).filter(x => x != null);
+    let r, why;
+    if (rirs.length) {
+      // capacity of a fresh set ≈ reps + reps-in-reserve (+1 per earlier set for fatigue)
+      const cap = work.reduce((a, x, k) => a + x.r + (rirOf(x) != null ? rirOf(x) : rir) + Math.min(k, 3), 0) / work.length;
+      r = Math.max(1, Math.round(cap - rir - fatigueAdj(item))); why = 'from how hard last time felt';
+    } else if (L.rec && L.rec.r && reps.length && reps.every(x => x >= L.rec.r)) { r = L.rec.r + 1; why = 'hit every set last time → +1 rep'; }
+    else if (L.rec && L.rec.r && reps.some(x => x < L.rec.r - 1)) { r = Math.max(1, Math.round(reps.reduce((a, b) => a + b, 0) / reps.length)); why = 'matching what you managed last time'; }
+    else if (L.rec && L.rec.r) { r = L.rec.r; why = 'repeat last time\'s target'; }
+    else { r = Math.round(reps.reduce((a, b) => a + b, 0) / reps.length) + 1; why = '+1 rep on last time'; }
+    let note = 'Aim for ' + r + ' reps per set — ' + why + '.';
+    if (r > hi + 5) note += ' That\'s a lot of reps: try a harder variation (slower tempo, elevated feet, a band or added weight).';
+    return { w: null, r, note, basis: 'history', calib: false };
+  }
+
   /** Re-tune the remaining sets of an exercise from a rated (or failed) set. Returns a message or null. */
   function autoregulate(st, it, j) {
-    const e = E().ex(it.exId); const s = it.sets[j]; if (!e || !s || !s.done || !(s.w > 0) || !(s.r > 0)) return null;
-    if (E().noLoad(e)) return null;
+    const e = E().ex(it.exId); const s = it.sets[j]; if (!e || !s || !s.done || !(s.r > 0)) return null;
+    if (E().noLoad(e)) {
+      // bodyweight/band: only reps change. Calibration set (or a rating / missed target) sets the rest.
+      const rirT0 = goalRir(st.profile); let q = rirOf(s);
+      if (q == null) { if (it.calib && j === 0) q = rirT0; else if (s.r < it.repMin) q = 0; else return null; }
+      const cap = s.r + q;
+      const rest0 = it.sets.map((x, k) => ({ x, k })).filter(o => o.k > j && !o.x.done && !o.x.rEdited);
+      if (!rest0.length) return null;
+      let changed = false;
+      rest0.forEach(o => { const nr = Math.max(1, Math.round(cap - rirT0 - 0.6 * (o.k - j))); if (nr !== o.x.r) { o.x.r = nr; o.x.auto = true; changed = true; } });
+      if (!changed) return null;
+      const f = rest0[0].k + 1, l = rest0[rest0.length - 1].k + 1;
+      return (it.calib && j === 0 ? 'Calibrated' : 'Adjusted') + ': set' + (f === l ? ' ' + f : 's ' + f + '–' + l) + ' → ' + rest0.map(o => o.x.r).join(', ') + ' reps';
+    }
+    if (!(s.w > 0)) return null;
     const units = st.profile.units || 'kg'; const rirT = goalRir(st.profile);
     let r = rirOf(s); if (r == null) { if (s.r < it.repMin) r = 0; else return null; }
     const adj = fatigueAdj(it); const expected = rirT + adj - j;   // set 1 of 3 should feel ~1 rep easier than target, set 3 ~1 harder
     const one = e1rm(s.w, s.r, r + Math.min(j, 3));                // fresh-equivalent strength (undo ~1 rep of fatigue per earlier set)
     const rest = it.sets.map((x, k) => ({ x, k })).filter(o => o.k > j && !o.x.done && !o.x.wEdited);
     if (!rest.length) return null;
-    const aim = Math.round(it.repMin + (it.repMax - it.repMin) * 0.6);
-    let w = roundW(weightFor(one, aim, rirT + adj), e, units);
-    let reps = clamp(ffloor(30 * (one / w - 1) - rirT - adj), it.repMin, it.repMax);
+    let { w, r: reps } = pick(one, rirT + adj, it.repMin, it.repMax, e, units);
     const cur = rest[0].x.w || 0;
     // Only re-tune when effort was clearly off target (±2 reps in reserve) or reps were missed. A 1-rep difference is
     // normal set-to-set fatigue; reacting to it just makes the weight bounce around.
     const diffEffort = r - expected; const failed = s.r < it.repMin;
     if (!failed && Math.abs(diffEffort) < 2 && !(it.calib && j === 0)) return null;
-    if (Math.abs(w - cur) < (E().increment(e, units) || 2.5) * 0.99) { if (reps === rest[0].x.r) return null; w = cur; }
+    if (Math.abs(w - cur) < (E().increment(e, units) || 2.5) * 0.99 && cur > 0) {
+      // same weight: just set the reps that fit it
+      w = cur; reps = clamp(cleanAtMost(ffloor(30 * (one / cur - 1) - rirT - adj), it.repMin), it.repMin, it.repMax);
+      if (reps === rest[0].x.r) return null;
+    }
     // later sets lose ~1 rep each to fatigue: don't raise the weight for the final set off one moderately easy rating
     if (w > cur && rest.length === 1 && !it.calib && diffEffort < 3) return null;
     if (!it.calib && Math.abs(w - cur) / Math.max(1, cur) > 0.2) w = roundW(cur * (w > cur ? 1.2 : 0.8), e, units); // cap jumps for known lifts
