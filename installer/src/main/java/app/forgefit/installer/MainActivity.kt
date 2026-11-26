@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
  */
 class MainActivity : ComponentActivity() {
     private val bg = Color.parseColor("#0A0B0E"); private val card = Color.parseColor("#13151A")
-    private val line = Color.parseColor("#2A2E38"); private val text = Color.parseColor("#F2F0EA")
+    private val line = Color.parseColor("#2A2E38"); private val fg = Color.parseColor("#F2F0EA")
     private val muted = Color.parseColor("#8B909B"); private val accent = Color.parseColor("#FF6A33")
     private val green = Color.parseColor("#2FD3A8"); private val red = Color.parseColor("#FF6B6B")
 
@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
         setContentView(ScrollView(this).apply { setBackgroundColor(bg); addView(col) })
 
         col.addView(tv("FORGE", 12f, accent, bold = true).apply { letterSpacing = .15f })
-        col.addView(tv("Watch Installer", 28f, text, bold = true))
+        col.addView(tv("Watch Installer", 28f, fg, bold = true))
         col.addView(tv("Installs Forge on your Galaxy Watch over Wi-Fi — no computer needed.", 14f, muted).apply { setPadding(0, dp(2), 0, dp(14)) })
 
         // ---- Step 1
@@ -70,7 +70,7 @@ class MainActivity : ComponentActivity() {
 
         // ---- Step 2 pair
         val s2 = box(); col.addView(s2)
-        s2.addView(tv("2 · Pair (once)", 17f, text, bold = true))
+        s2.addView(tv("2 · Pair (once)", 17f, fg, bold = true))
         found = tv("Searching for the watch on this Wi-Fi…", 13f, muted).apply { setPadding(0, dp(4), 0, dp(8)) }; s2.addView(found)
         ip = field("Watch IP (e.g. 192.168.1.23)", prefs.getString("ip", "") ?: "", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI); s2.addView(ip)
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -81,14 +81,14 @@ class MainActivity : ComponentActivity() {
 
         // ---- Step 3 connect
         val s3 = box(); col.addView(s3)
-        s3.addView(tv("3 · Connect", 17f, text, bold = true))
+        s3.addView(tv("3 · Connect", 17f, fg, bold = true))
         s3.addView(tv("Use the IP address & Port shown at the top of the watch's Wireless debugging screen (different from the pairing port).", 13f, muted).apply { setPadding(0, dp(4), 0, dp(8)) })
         connPort = field("Connect port", prefs.getString("cport", "") ?: "", InputType.TYPE_CLASS_NUMBER); s3.addView(connPort)
         connectBtn = btn("Connect", true) { connect() }; s3.addView(connectBtn)
 
         // ---- Step 4 install
         val s4 = box(); col.addView(s4)
-        s4.addView(tv("4 · Install", 17f, text, bold = true))
+        s4.addView(tv("4 · Install", 17f, fg, bold = true))
         apkLabel = tv(if (hasBundled()) "Bundled: Forge watch v" + BuildConfig.WATCH_VERSION else "No bundled APK — choose one", 13f, muted).apply { setPadding(0, dp(4), 0, dp(8)) }; s4.addView(apkLabel)
         s4.addView(btn("Choose a different APK…", false) { pickApk.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream", "*/*")) })
         installBtn = btn("Install on watch", true) { install() }; s4.addView(installBtn)
@@ -96,7 +96,7 @@ class MainActivity : ComponentActivity() {
         s4.addView(bar, LinearLayout.LayoutParams(MATCH_PARENT, dp(10)).apply { topMargin = dp(10) })
         s4.addView(btn("Uninstall Forge from watch (fixes signature errors)", false) { uninstall() })
 
-        status = tv("", 15f, text, bold = true).apply { setPadding(0, dp(16), 0, dp(4)) }; col.addView(status)
+        status = tv("", 15f, fg, bold = true).apply { setPadding(0, dp(16), 0, dp(4)) }; col.addView(status)
         log = tv("", 12f, muted).apply { typeface = Typeface.MONOSPACE; setTextIsSelectable(true) }; col.addView(log)
 
         discover()
@@ -171,7 +171,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun run(busy: String, b: Button?, block: suspend () -> String) {
-        b?.isEnabled = false; setStatus(busy, text)
+        b?.isEnabled = false; setStatus(busy, fg)
         lifecycleScope.launch {
             try { val msg = withContext(Dispatchers.IO) { block() }; setStatus(msg, green) }
             catch (e: Throwable) {
@@ -239,17 +239,17 @@ class MainActivity : ComponentActivity() {
         layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { bottomMargin = dp(12) }
     }
     private fun section(title: String, steps: List<String>) = box().apply {
-        addView(tv(title, 17f, text, bold = true))
+        addView(tv(title, 17f, fg, bold = true))
         steps.forEachIndexed { i, s -> addView(tv("${i + 1}.  $s", 14f, muted).apply { setPadding(0, dp(6), 0, 0) }) }
     }
     private fun field(hint: String, value: String, type: Int) = EditText(this).apply {
-        this.hint = hint; setText(value); inputType = type; setTextColor(text); setHintTextColor(Color.parseColor("#5B606B"))
+        this.hint = hint; setText(value); inputType = type; setTextColor(fg); setHintTextColor(Color.parseColor("#5B606B"))
         background = rounded(Color.parseColor("#1B1E25"), line, 12); setPadding(dp(12), dp(12), dp(12), dp(12)); textSize = 16f
         layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { bottomMargin = dp(8) }
     }
     private fun btn(label: String, primary: Boolean, onClick: () -> Unit) = Button(this).apply {
         text = label; isAllCaps = false; textSize = 15f; setTypeface(typeface, Typeface.BOLD)
-        setTextColor(if (primary) Color.parseColor("#1A0B04") else text)
+        setTextColor(if (primary) Color.parseColor("#1A0B04") else fg)
         background = rounded(if (primary) accent else Color.parseColor("#1B1E25"), if (primary) null else line, 14)
         gravity = Gravity.CENTER; setPadding(dp(12), dp(12), dp(12), dp(12)); setOnClickListener { onClick() }
         layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = dp(6) }
