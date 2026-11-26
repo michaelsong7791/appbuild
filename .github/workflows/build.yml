@@ -24,16 +24,18 @@ jobs:
       - name: Build phone + watch APKs
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleRelease :wear:assembleRelease --stacktrace
+          ./gradlew :app:assembleRelease :wear:assembleRelease :installer:assembleRelease --stacktrace
 
       - name: Collect APKs (named by version)
         run: |
           PV=$(grep -m1 'versionName' app/build.gradle.kts | sed -E 's/.*"(.*)".*/\1/')
           WV=$(grep -m1 'versionName' wear/build.gradle.kts | sed -E 's/.*"(.*)".*/\1/')
+          IV=$(grep -m1 'versionName' installer/build.gradle.kts | sed -E 's/.*"(.*)".*/\1/')
           echo "PV=$PV" >> $GITHUB_ENV; echo "WV=$WV" >> $GITHUB_ENV
           mkdir -p out
           cp app/build/outputs/apk/release/app-release.apk "out/Forge-phone-v$PV.apk"
           cp wear/build/outputs/apk/release/wear-release.apk "out/Forge-watch-v$WV.apk"
+          cp installer/build/outputs/apk/release/installer-release.apk "out/Forge-watch-installer-v$IV.apk"
           ls -la out
 
       - uses: actions/upload-artifact@v4
