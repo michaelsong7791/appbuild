@@ -30,7 +30,7 @@ jobs:
         run: |
           PV=$(grep -m1 'versionName' app/build.gradle.kts | sed -E 's/.*"(.*)".*/\1/')
           WV=$(grep -m1 'versionName' wear/build.gradle.kts | sed -E 's/.*"(.*)".*/\1/')
-          IV=$(grep -m1 'versionName' installer/build.gradle.kts | sed -E 's/.*"(.*)".*/\1/')
+          IV=$(grep -m1 'versionName = "' installer/build.gradle.kts | sed -E 's/.*"(.*)".*/\1/')
           echo "PV=$PV" >> $GITHUB_ENV; echo "WV=$WV" >> $GITHUB_ENV
           mkdir -p out
           cp app/build/outputs/apk/release/app-release.apk "out/Forge-phone-v$PV.apk"
